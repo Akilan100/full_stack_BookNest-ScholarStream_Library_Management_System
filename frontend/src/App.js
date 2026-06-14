@@ -36,6 +36,16 @@ function App() {
   const [formTotalCopies, setFormTotalCopies] = useState(1);
   const [formErrors, setFormErrors] = useState({});
 
+  useEffect(() => {
+    if (!auth.token) return;
+    const params = { page, size: 10 };
+    if (search) params.title = search;
+    if (category && category !== 'All') params.category = category;
+    axios.get('/api/books', { params }).then(res => {
+      dispatch(setBooks(res.data));
+    });
+  }, [auth.token, search, category, page]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const fetchBooks = () => {
     const params = { page, size: 10 };
     if (search) params.title = search;
@@ -44,10 +54,6 @@ function App() {
       dispatch(setBooks(res.data));
     });
   };
-
-  useEffect(() => {
-    if (auth.token) fetchBooks();
-  }, [auth.token, search, category, page]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
