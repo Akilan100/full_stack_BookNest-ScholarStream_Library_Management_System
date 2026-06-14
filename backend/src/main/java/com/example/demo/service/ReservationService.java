@@ -1,46 +1,41 @@
 package com.example.demo.service;
 
-import com.example.demo.entity.Reservation;
+import com.example.demo.entity.BookHoldRequest;
 import com.example.demo.exception.ResourceNotFoundException;
-import com.example.demo.repository.ReservationRepository;
-import lombok.RequiredArgsConstructor;
+import com.example.demo.repository.BookHoldRequestRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
-@Transactional
-@RequiredArgsConstructor
 public class ReservationService {
 
-    private final ReservationRepository reservationRepository;
+    private final BookHoldRequestRepository bookHoldRequestRepository;
 
-    @Transactional(readOnly = true)
-    public List<Reservation> getAllReservations() {
-        return reservationRepository.findAll();
+    public ReservationService(BookHoldRequestRepository bookHoldRequestRepository) {
+        this.bookHoldRequestRepository = bookHoldRequestRepository;
     }
 
     @Transactional(readOnly = true)
-    public Reservation getReservationById(Long id) {
-        return reservationRepository.findById(id)
+    public List<BookHoldRequest> getAllReservations() {
+        return bookHoldRequestRepository.findAll();
+    }
+
+    @Transactional(readOnly = true)
+    public BookHoldRequest getReservationById(Long id) {
+        return bookHoldRequestRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Reservation not found with id: " + id));
     }
 
-    public Reservation createReservation(Reservation reservation) {
-        return reservationRepository.save(reservation);
+    @Transactional
+    public BookHoldRequest createReservation(BookHoldRequest request) {
+        return bookHoldRequestRepository.save(request);
     }
 
-    public Reservation updateReservation(Long id, Reservation updated) {
-        Reservation existing = getReservationById(id);
-        existing.setReservedBy(updated.getReservedBy());
-        existing.setReservationDate(updated.getReservationDate());
-        existing.setBook(updated.getBook());
-        return reservationRepository.save(existing);
-    }
-
+    @Transactional
     public void deleteReservation(Long id) {
         getReservationById(id);
-        reservationRepository.deleteById(id);
+        bookHoldRequestRepository.deleteById(id);
     }
 }
