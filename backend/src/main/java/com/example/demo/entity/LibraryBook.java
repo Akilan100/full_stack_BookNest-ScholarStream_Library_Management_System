@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "library_book")
+@Table(name = "library_books")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -29,9 +29,6 @@ public class LibraryBook {
     private String isbn;
 
     private String category;
-
-    public String getCategory() { return category; }
-    public void setCategory(String category) { this.category = category; }
 
     @OneToMany(mappedBy = "book", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Reservation> reservations = new ArrayList<>();
