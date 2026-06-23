@@ -23,7 +23,7 @@ public class User implements UserDetails {
     private String password;
 
     @Column(nullable = false)
-    private String role;
+    private String role;w
 
     @Column(nullable = false)
     private String fullName;
