@@ -21,6 +21,12 @@ public class AuthController {
         return ResponseEntity.ok(authService.register(req));
     }
 
+    @DeleteMapping("/delete")
+    public ResponseEntity<Void> deleteUser(@RequestParam String email) {
+        authService.deleteByEmail(email);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest req) {
         return ResponseEntity.ok(authService.login(req));

@@ -36,6 +36,12 @@ public class AuthService {
         return new AuthResponse(token, user.getRole(), user.getEmail(), user.getFullName(), user.getId());
     }
 
+    public void deleteByEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessValidationException("User not found"));
+        userRepository.delete(user);
+    }
+
     public AuthResponse login(AuthRequest req) {
         User user = userRepository.findByEmail(req.getEmail())
                 .orElseThrow(() -> new BusinessValidationException("Invalid email or password"));
