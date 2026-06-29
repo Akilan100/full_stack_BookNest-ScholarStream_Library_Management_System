@@ -4,12 +4,13 @@ import com.example.demo.dto.BookRequestDto;
 import com.example.demo.entity.LibraryBook;
 import com.example.demo.service.BookService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -23,13 +24,17 @@ public class BookController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF', 'CHIEF_LIBRARIAN')")
-    public ResponseEntity<List<LibraryBook>> getAllBooks() {
-        return ResponseEntity.ok(bookService.getAllBooks());
+    @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF', 'CHIEF_LIBRARIAN', 'LIBRARY_PATRON')")
+    public ResponseEntity<Page<LibraryBook>> getAllBooks(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String category) {
+        return ResponseEntity.ok(bookService.getAllBooks(page, size, title, category));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF', 'CHIEF_LIBRARIAN')")
+    @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF', 'CHIEF_LIBRARIAN', 'LIBRARY_PATRON')")
     public ResponseEntity<LibraryBook> getBookById(@PathVariable Long id) {
         return ResponseEntity.ok(bookService.getBookById(id));
     }

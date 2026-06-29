@@ -4,10 +4,10 @@ import com.example.demo.dto.BookRequestDto;
 import com.example.demo.entity.LibraryBook;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.LibraryBookRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 public class BookService {
@@ -19,8 +19,8 @@ public class BookService {
     }
 
     @Transactional(readOnly = true)
-    public List<LibraryBook> getAllBooks() {
-        return bookRepository.findAll();
+    public Page<LibraryBook> getAllBooks(int page, int size, String title, String category) {
+        return bookRepository.findByFilters(title, category, PageRequest.of(page, size));
     }
 
     @Transactional(readOnly = true)
