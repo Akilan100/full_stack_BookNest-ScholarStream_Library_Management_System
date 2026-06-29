@@ -62,7 +62,7 @@ function App() {
       const res = await axios.post('/api/auth/login', { email, password });
       dispatch(setAuth(res.data));
     } catch (err) {
-      setAuthError(err?.response?.data?.message || 'Login failed');
+      setAuthError(err?.response?.data?.error || err?.response?.data?.message || 'Login failed');
     }
   };
 
@@ -73,7 +73,7 @@ function App() {
       const res = await axios.post('/api/auth/register', { email, password, role, fullName });
       dispatch(setAuth(res.data));
     } catch (err) {
-      setAuthError(err?.response?.data?.message || 'Registration failed');
+      setAuthError(err?.response?.data?.error || err?.response?.data?.message || 'Registration failed');
     }
   };
 
