@@ -60,6 +60,7 @@ function App() {
     setAuthError('');
     try {
       const res = await axios.post('/api/auth/login', { email, password });
+      axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
       dispatch(setAuth(res.data));
     } catch (err) {
       setAuthError(err?.response?.data?.error || err?.response?.data?.message || 'Login failed');
@@ -71,6 +72,7 @@ function App() {
     setAuthError('');
     try {
       const res = await axios.post('/api/auth/register', { email, password, role, fullName });
+      axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
       dispatch(setAuth(res.data));
     } catch (err) {
       setAuthError(err?.response?.data?.error || err?.response?.data?.message || 'Registration failed');
@@ -78,6 +80,7 @@ function App() {
   };
 
   const handleLogout = () => {
+    delete axios.defaults.headers.common['Authorization'];
     dispatch(clearAuth());
     localStorage.clear();
   };
