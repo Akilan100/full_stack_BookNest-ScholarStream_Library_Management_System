@@ -38,6 +38,11 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
+    @PutMapping("/users/{id}")
+    public ResponseEntity<AuthResponse> updateUser(@PathVariable Long id, @RequestBody AuthRequest req) {
+        return ResponseEntity.ok(authService.updateById(id, req));
+    }
+
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest req) {
         return ResponseEntity.ok(authService.login(req));

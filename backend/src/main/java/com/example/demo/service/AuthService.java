@@ -42,6 +42,18 @@ public class AuthService {
         userRepository.delete(user);
     }
 
+    public AuthResponse updateById(Long id, AuthRequest req) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new BusinessValidationException("User not found"));
+        if (req.getFullName() != null) user.setFullName(req.getFullName());
+        if (req.getEmail() != null) user.setEmail(req.getEmail());
+        if (req.getRole() != null) user.setRole(req.getRole());
+        if (req.getPassword() != null) user.setPassword(passwordEncoder.encode(req.getPassword()));
+        userRepository.save(user);
+        String token = jwtService.generateToken(user);
+        return new AuthResponse(token, user.getRole(), user.getEmail(), user.getFullName(), user.getId());
+    }
+
     public AuthResponse login(AuthRequest req) {
         User user = userRepository.findByEmail(req.getEmail())
                 .orElseThrow(() -> new BusinessValidationException("Invalid email or password"));
