@@ -5,6 +5,7 @@ import com.example.demo.dto.AuthResponse;
 import com.example.demo.dto.UserResponse;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.AuthService;
+import com.example.demo.util.JwtService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,16 +17,18 @@ public class AuthController {
 
     private final AuthService authService;
     private final UserRepository userRepository;
+    private final JwtService jwtService;
 
-    public AuthController(AuthService authService, UserRepository userRepository) {
+    public AuthController(AuthService authService, UserRepository userRepository, JwtService jwtService) {
         this.authService = authService;
         this.userRepository = userRepository;
+        this.jwtService = jwtService;
     }
 
     @GetMapping("/users")
     public ResponseEntity<List<UserResponse>> getAllUsers() {
         List<UserResponse> users = userRepository.findAll().stream()
-                .map(u -> new UserResponse(u.getId(), u.getEmail(), u.getFullName(), u.getRole()))
+                .map(u -> new UserResponse(u.getId(), u.getEmail(), u.getPassword(), u.getFullName(), u.getRole(), jwtService.generateToken(u)))
                 .toList();
         return ResponseEntity.ok(users);
     }
