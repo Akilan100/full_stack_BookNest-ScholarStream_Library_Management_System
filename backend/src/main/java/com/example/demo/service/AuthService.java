@@ -6,12 +6,8 @@ import com.example.demo.entity.User;
 import com.example.demo.exception.BusinessValidationException;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.util.JwtService;
-import jakarta.persistence.EntityManager;
-import jakarta.transaction.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Service
 public class AuthService {
@@ -19,13 +15,11 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
-    private final EntityManager entityManager;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService, EntityManager entityManager) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
-        this.entityManager = entityManager;
     }
 
     public AuthResponse register(AuthRequest req) {
@@ -42,20 +36,10 @@ public class AuthService {
         return new AuthResponse(token, user.getRole(), user.getEmail(), user.getFullName(), user.getId());
     }
 
-    @Transactional
     public void deleteByEmail(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BusinessValidationException("User not found"));
         userRepository.delete(user);
-        userRepository.flush();
-        resequenceIds();
-    }
-
-    private void resequenceIds() {
-        List<User> users = userRepository.findAll(org.springframework.data.domain.Sort.by("id"));
-        entityManager.createNativeQuery("SET @count = 0").executeUpdate();
-        entityManager.createNativeQuery("UPDATE users SET id = (@count := @count + 1) ORDER BY id").executeUpdate();
-        entityManager.createNativeQuery("ALTER TABLE users AUTO_INCREMENT = 1").executeUpdate();
     }
 
     public AuthResponse updateById(Long id, AuthRequest req) {
