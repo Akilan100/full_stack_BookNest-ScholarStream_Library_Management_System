@@ -2,7 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.AuthRequest;
 import com.example.demo.dto.AuthResponse;
-import com.example.demo.entity.User;
+import com.example.demo.dto.UserResponse;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.AuthService;
 import org.springframework.http.ResponseEntity;
@@ -23,8 +23,11 @@ public class AuthController {
     }
 
     @GetMapping("/users")
-    public ResponseEntity<List<User>> getAllUsers() {
-        return ResponseEntity.ok(userRepository.findAll());
+    public ResponseEntity<List<UserResponse>> getAllUsers() {
+        List<UserResponse> users = userRepository.findAll().stream()
+                .map(u -> new UserResponse(u.getId(), u.getEmail(), u.getFullName(), u.getRole()))
+                .toList();
+        return ResponseEntity.ok(users);
     }
 
     @PostMapping("/register")
