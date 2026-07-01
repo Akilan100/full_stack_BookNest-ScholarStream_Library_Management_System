@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.ReservationRequestDto;
 import com.example.demo.entity.BookHoldRequest;
 import com.example.demo.service.ReservationService;
 import org.springframework.http.HttpStatus;
@@ -30,8 +31,8 @@ public class ReservationController {
     }
 
     @PostMapping
-    public ResponseEntity<BookHoldRequest> createReservation(@RequestBody BookHoldRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(reservationService.createReservation(request));
+    public ResponseEntity<BookHoldRequest> createReservation(@RequestBody ReservationRequestDto dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(reservationService.createReservation(dto));
     }
 
     @DeleteMapping("/{id}")
