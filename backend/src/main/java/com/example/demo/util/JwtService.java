@@ -3,7 +3,10 @@ package com.example.demo.util;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -14,15 +17,19 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
-    private String secret = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970";
+    private static final Logger log = LoggerFactory.getLogger(JwtService.class);
+
+    // Base64-encoded 256-bit secret (replace with a value from: openssl rand -base64 32)
+    private String secret = "QE5jUmZValhOcjI1dTh4L0E/RChnK0tiUGRTZ1ZrWXA=";
 
     private long expiration = 1000L * 60 * 60 * 24;
 
     private Key getSigningKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes());
+        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
     }
 
     public String generateToken(UserDetails userDetails) {
+        log.debug("Generating token for user: {}, authorities: {}", userDetails.getUsername(), userDetails.getAuthorities());
         return Jwts.builder()
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date())
@@ -34,8 +41,11 @@ public class JwtService {
     public boolean isTokenValid(String token, UserDetails userDetails) {
         try {
             String username = extractUsername(token);
-            return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
+            boolean valid = username.equals(userDetails.getUsername()) && !isTokenExpired(token);
+            log.debug("Token valid={} for user={}", valid, username);
+            return valid;
         } catch (Exception e) {
+            log.warn("Token validation failed: {}", e.getMessage());
             return false;
         }
     }
