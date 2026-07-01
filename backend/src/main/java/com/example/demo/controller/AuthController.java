@@ -6,7 +6,6 @@ import com.example.demo.entity.User;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.AuthService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,7 +23,6 @@ public class AuthController {
     }
 
     @GetMapping("/users")
-    @PreAuthorize("hasRole('CHIEF_LIBRARIAN')")
     public ResponseEntity<List<User>> getAllUsers() {
         return ResponseEntity.ok(userRepository.findAll());
     }
@@ -35,14 +33,12 @@ public class AuthController {
     }
 
     @DeleteMapping("/users/{email}")
-    @PreAuthorize("hasRole('CHIEF_LIBRARIAN')")
     public ResponseEntity<Void> deleteUser(@PathVariable String email) {
         authService.deleteByEmail(email);
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/users/{id}")
-    @PreAuthorize("hasRole('CHIEF_LIBRARIAN')")
     public ResponseEntity<AuthResponse> updateUser(@PathVariable Long id, @RequestBody AuthRequest req) {
         return ResponseEntity.ok(authService.updateById(id, req));
     }
