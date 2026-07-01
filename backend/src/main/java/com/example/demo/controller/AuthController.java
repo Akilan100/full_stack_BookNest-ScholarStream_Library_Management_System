@@ -32,7 +32,7 @@ public class AuthController {
         return ResponseEntity.ok(authService.register(req));
     }
 
-    @DeleteMapping("/delete")
+    @GetMapping("/delete")
     public ResponseEntity<Void> deleteUser(@RequestParam String email) {
         authService.deleteByEmail(email);
         return ResponseEntity.noContent().build();
