@@ -26,6 +26,7 @@ public class ReservationService {
         this.libraryBookRepository = null;
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
     public ReservationService(BookHoldRequestRepository bookHoldRequestRepository,
                               UserRepository userRepository,
                               LibraryBookRepository libraryBookRepository) {
