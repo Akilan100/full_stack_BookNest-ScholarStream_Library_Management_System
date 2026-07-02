@@ -28,6 +28,12 @@ public class ReservationService {
         this.libraryBookRepository = libraryBookRepository;
     }
 
+    public ReservationService(BookHoldRequestRepository bookHoldRequestRepository) {
+        this.bookHoldRequestRepository = bookHoldRequestRepository;
+        this.userRepository = null;
+        this.libraryBookRepository = null;
+    }
+
     @Transactional(readOnly = true)
     public List<BookHoldRequest> getAllReservations() {
         return bookHoldRequestRepository.findAll();
