@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import axios from 'axios';
 import { setAuth, clearAuth } from './store/slices/authSlice';
 import { setBooks } from './store/slices/libraryBookSlice';
+import LoginPage from './pages/LoginPage';
 
 const ROLES = ['LIBRARIAN_STAFF', 'CHIEF_LIBRARIAN', 'LIBRARY_PATRON'];
 const CATEGORIES = ['All', 'Computer Science', 'Mathematics', 'Science', 'History', 'Software Engineering'];
@@ -138,46 +139,40 @@ function App() {
     setShowEdit(true);
   };
 
+  const [loading, setLoading] = useState(false);
+
+  const handleLoginWithLoading = async (e) => {
+    setLoading(true);
+    await handleLogin(e);
+    setLoading(false);
+  };
+
+  const handleRegisterWithLoading = async (e) => {
+    setLoading(true);
+    await handleRegister(e);
+    setLoading(false);
+  };
+
   const isStaff = STAFF_ROLES.includes(auth.role);
 
   if (!auth.token) {
     return (
-      <div>
-        <h1>Library Portal Sign-In</h1>
-        {authError && <p>{authError}</p>}
-        <form onSubmit={isRegister ? handleRegister : handleLogin}>
-          <input
-            type="email"
-            placeholder="patron@booknest.com"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-          />
-          <input
-            type="password"
-            placeholder="••••"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-          />
-          {isRegister && (
-            <>
-              <input
-                type="text"
-                placeholder="Full Name"
-                value={fullName}
-                onChange={e => setFullName(e.target.value)}
-              />
-              <label>Assigned Domain Access Role</label>
-              <select value={role} onChange={e => setRole(e.target.value)}>
-                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
-            </>
-          )}
-          <button type="submit">{isRegister ? 'Create Account' : 'Access Library Portal'}</button>
-        </form>
-        <button onClick={() => setIsRegister(!isRegister)}>
-          {isRegister ? 'Back to login' : 'Setup account'}
-        </button>
-      </div>
+      <LoginPage
+        isRegister={isRegister}
+        setIsRegister={setIsRegister}
+        email={email}
+        setEmail={setEmail}
+        password={password}
+        setPassword={setPassword}
+        fullName={fullName}
+        setFullName={setFullName}
+        role={role}
+        setRole={setRole}
+        authError={authError}
+        loading={loading}
+        onLogin={handleLoginWithLoading}
+        onRegister={handleRegisterWithLoading}
+      />
     );
   }
 
