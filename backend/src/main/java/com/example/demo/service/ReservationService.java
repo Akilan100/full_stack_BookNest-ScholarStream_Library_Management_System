@@ -20,18 +20,18 @@ public class ReservationService {
     private final UserRepository userRepository;
     private final LibraryBookRepository libraryBookRepository;
 
+    public ReservationService(BookHoldRequestRepository bookHoldRequestRepository) {
+        this.bookHoldRequestRepository = bookHoldRequestRepository;
+        this.userRepository = null;
+        this.libraryBookRepository = null;
+    }
+
     public ReservationService(BookHoldRequestRepository bookHoldRequestRepository,
                               UserRepository userRepository,
                               LibraryBookRepository libraryBookRepository) {
         this.bookHoldRequestRepository = bookHoldRequestRepository;
         this.userRepository = userRepository;
         this.libraryBookRepository = libraryBookRepository;
-    }
-
-    public ReservationService(BookHoldRequestRepository bookHoldRequestRepository) {
-        this.bookHoldRequestRepository = bookHoldRequestRepository;
-        this.userRepository = null;
-        this.libraryBookRepository = null;
     }
 
     @Transactional(readOnly = true)
