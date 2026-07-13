@@ -1,0 +1,465 @@
+{
+  "info": {
+    "name": "BookNest Library Management System",
+    "_postman_id": "booknest-lms-collection",
+    "description": "Complete API collection for BookNest Library Management System. Set the `token` variable after login to auto-authenticate all requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register — CHIEF_LIBRARIAN",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@booknest.com\",\n  \"password\": \"Admin123!\",\n  \"fullName\": \"Chief Admin\",\n  \"role\": \"CHIEF_LIBRARIAN\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Register — LIBRARIAN_STAFF",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"staff@booknest.com\",\n  \"password\": \"Staff123!\",\n  \"fullName\": \"Library Staff\",\n  \"role\": \"LIBRARIAN_STAFF\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Register — LIBRARY_PATRON",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"patron@booknest.com\",\n  \"password\": \"Patron123!\",\n  \"fullName\": \"John Patron\",\n  \"role\": \"LIBRARY_PATRON\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.token) {",
+                  "  pm.collectionVariables.set('token', json.token);",
+                  "  console.log('Token saved:', json.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@booknest.com\",\n  \"password\": \"Admin123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/auth/users", "host": ["{{baseUrl}}"], "path": ["api", "auth", "users"] }
+          }
+        },
+        {
+          "name": "Update User by ID",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/users/1", "host": ["{{baseUrl}}"], "path": ["api", "auth", "users", "1"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Updated Full Name\",\n  \"email\": \"updated@booknest.com\",\n  \"role\": \"LIBRARIAN_STAFF\",\n  \"password\": \"NewPass123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete User by Email",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/auth/users/patron@booknest.com", "host": ["{{baseUrl}}"], "path": ["api", "auth", "users", "patron@booknest.com"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Books",
+      "item": [
+        {
+          "name": "Get All Books",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/books?page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "books"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Books — Filter by Title",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/books?page=0&size=10&title=clean",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "books"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" },
+                { "key": "title", "value": "clean" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Books — Filter by Category",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/books?page=0&size=10&category=Computer Science",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "books"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" },
+                { "key": "category", "value": "Computer Science" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Books — Filter by Title + Category",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/books?page=0&size=10&title=java&category=Computer Science",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "books"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" },
+                { "key": "title", "value": "java" },
+                { "key": "category", "value": "Computer Science" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Book by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/books/1", "host": ["{{baseUrl}}"], "path": ["api", "books", "1"] }
+          }
+        },
+        {
+          "name": "Create Book (CHIEF_LIBRARIAN)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/books", "host": ["{{baseUrl}}"], "path": ["api", "books"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isbn\": \"978-0-13-468599-1\",\n  \"title\": \"Clean Code\",\n  \"author\": \"Robert C. Martin\",\n  \"category\": \"Computer Science\",\n  \"totalCopies\": 5\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Book (CHIEF_LIBRARIAN / LIBRARIAN_STAFF)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/books/1", "host": ["{{baseUrl}}"], "path": ["api", "books", "1"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isbn\": \"978-0-13-468599-1\",\n  \"title\": \"Clean Code (2nd Edition)\",\n  \"author\": \"Robert C. Martin\",\n  \"category\": \"Software Engineering\",\n  \"totalCopies\": 10\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Book (LIBRARIAN_STAFF / CHIEF_LIBRARIAN)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/books/1", "host": ["{{baseUrl}}"], "path": ["api", "books", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reservations (Legacy)",
+      "item": [
+        {
+          "name": "Get All Reservations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/reservations", "host": ["{{baseUrl}}"], "path": ["api", "reservations"] }
+          }
+        },
+        {
+          "name": "Get Reservation by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/reservations/1", "host": ["{{baseUrl}}"], "path": ["api", "reservations", "1"] }
+          }
+        },
+        {
+          "name": "Create Reservation",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/reservations", "host": ["{{baseUrl}}"], "path": ["api", "reservations"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"bookId\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Reservation",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/reservations/1", "host": ["{{baseUrl}}"], "path": ["api", "reservations", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Book Issues",
+      "item": [
+        {
+          "name": "Get All Issue Records",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/book-issues", "host": ["{{baseUrl}}"], "path": ["api", "book-issues"] }
+          }
+        },
+        {
+          "name": "Get Issue Record by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/book-issues/1", "host": ["{{baseUrl}}"], "path": ["api", "book-issues", "1"] }
+          }
+        },
+        {
+          "name": "Issue Book (LIBRARIAN_STAFF / CHIEF_LIBRARIAN)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/book-issues", "host": ["{{baseUrl}}"], "path": ["api", "book-issues"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"libraryBookId\": 1,\n  \"libraryAccountId\": 1,\n  \"dueDate\": \"2025-09-01T23:59:00\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Issue Book — Default Due Date (14 days)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/book-issues", "host": ["{{baseUrl}}"], "path": ["api", "book-issues"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"libraryBookId\": 1,\n  \"libraryAccountId\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Return Book (LIBRARIAN_STAFF / CHIEF_LIBRARIAN)",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/book-issues/1/return", "host": ["{{baseUrl}}"], "path": ["api", "book-issues", "1", "return"] }
+          }
+        },
+        {
+          "name": "Mark Book as Lost (LIBRARIAN_STAFF / CHIEF_LIBRARIAN)",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/book-issues/1/lost", "host": ["{{baseUrl}}"], "path": ["api", "book-issues", "1", "lost"] }
+          }
+        },
+        {
+          "name": "Delete Issue Record (LIBRARIAN_STAFF / CHIEF_LIBRARIAN)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/book-issues/1", "host": ["{{baseUrl}}"], "path": ["api", "book-issues", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Book Holds",
+      "item": [
+        {
+          "name": "Get All Hold Requests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/book-holds", "host": ["{{baseUrl}}"], "path": ["api", "book-holds"] }
+          }
+        },
+        {
+          "name": "Place Hold",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/book-holds", "host": ["{{baseUrl}}"], "path": ["api", "book-holds"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"libraryBookId\": 1,\n  \"libraryAccountId\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Place Hold — Custom Request Date",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/book-holds", "host": ["{{baseUrl}}"], "path": ["api", "book-holds"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"libraryBookId\": 1,\n  \"libraryAccountId\": 1,\n  \"requestDate\": \"2025-08-01T10:00:00\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Mark Hold Ready for Pickup",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/book-holds/1/pickup", "host": ["{{baseUrl}}"], "path": ["api", "book-holds", "1", "pickup"] }
+          }
+        },
+        {
+          "name": "Cancel Hold",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/book-holds/1/cancel", "host": ["{{baseUrl}}"], "path": ["api", "book-holds", "1", "cancel"] }
+          }
+        },
+        {
+          "name": "Delete Hold Request",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/book-holds/1", "host": ["{{baseUrl}}"], "path": ["api", "book-holds", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Fine Payments",
+      "item": [
+        {
+          "name": "Get All Fines",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/fines", "host": ["{{baseUrl}}"], "path": ["api", "fines"] }
+          }
+        },
+        {
+          "name": "Generate Fine (LIBRARIAN_STAFF / CHIEF_LIBRARIAN)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/fines", "host": ["{{baseUrl}}"], "path": ["api", "fines"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookIssueRecordId\": 1,\n  \"libraryAccountId\": 1,\n  \"amount\": 5.50\n}"
+            }
+          }
+        },
+        {
+          "name": "Generate Fine — Custom Payment Date",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/fines", "host": ["{{baseUrl}}"], "path": ["api", "fines"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookIssueRecordId\": 1,\n  \"libraryAccountId\": 1,\n  \"amount\": 12.00,\n  \"paymentDate\": \"2025-08-15T09:00:00\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Pay Fine",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/fines/1/pay", "host": ["{{baseUrl}}"], "path": ["api", "fines", "1", "pay"] }
+          }
+        },
+        {
+          "name": "Waive Fine (LIBRARIAN_STAFF / CHIEF_LIBRARIAN)",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/fines/1/waive", "host": ["{{baseUrl}}"], "path": ["api", "fines", "1", "waive"] }
+          }
+        }
+      ]
+    }
+  ]
+}
