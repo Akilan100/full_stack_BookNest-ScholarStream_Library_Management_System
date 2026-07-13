@@ -54,7 +54,10 @@ function App() {
 
   useEffect(() => {
     if (!auth.token) return;
-    axios.get('/api/auth/users').then(res => setUsers(res.data)).catch(() => {});
+    axios.get('/api/auth/users').then(res => {
+      const data = res.data;
+      setUsers(Array.isArray(data) ? data : (data?.content ?? []));
+    }).catch(() => {});
   }, [auth.token]);
 
   const fetchBooks = () => {
