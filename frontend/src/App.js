@@ -7,8 +7,6 @@ import LoginPage from './pages/LoginPage';
 import BookIssuePage from './pages/BookIssuePage';
 import BookHoldPage from './pages/BookHoldPage';
 import FinePaymentPage from './pages/FinePaymentPage';
-import { useSelector as useReduxSelector } from 'react-redux';
-
 const ROLES = ['LIBRARIAN_STAFF', 'CHIEF_LIBRARIAN', 'LIBRARY_PATRON'];
 const CATEGORIES = ['All', 'Computer Science', 'Mathematics', 'Science', 'History', 'Software Engineering'];
 const STAFF_ROLES = ['LIBRARIAN_STAFF', 'CHIEF_LIBRARIAN'];
