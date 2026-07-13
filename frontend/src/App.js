@@ -191,7 +191,7 @@ function App() {
 
   const NAV_ITEMS = [
     { key: 'catalogue', label: 'Catalogue' },
-    { key: 'issues', label: 'Issues' },
+    { key: 'issues', label: 'Lending' },
     { key: 'holds', label: 'Holds' },
     { key: 'fines', label: 'Fines' },
   ];
