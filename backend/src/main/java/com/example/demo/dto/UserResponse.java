@@ -36,7 +36,6 @@ public class UserResponse {
     public String getFullName() { return fullName; }
     public String getRole() { return role; }
     public String getToken() { return token; }
-    public String getUsername() { return email; }
     public boolean isEnabled() { return enabled; }
     public boolean isAccountNonExpired() { return accountNonExpired; }
     public boolean isAccountNonLocked() { return accountNonLocked; }
