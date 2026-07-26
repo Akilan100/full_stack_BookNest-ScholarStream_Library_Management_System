@@ -29,17 +29,17 @@ public class BookIssueController {
         return ResponseEntity.ok(bookIssueService.getAll());
     }
 
+    // PATRON — view their own borrowed books using ?libraryAccountId=
+    @GetMapping("/my")
+    public ResponseEntity<List<BookIssueResponseDto>> getMyIssues(@RequestParam Long libraryAccountId) {
+        return ResponseEntity.ok(bookIssueService.getByAccountId(libraryAccountId));
+    }
+
     // LIBRARIAN_STAFF / CHIEF_LIBRARIAN — view issue by id
     @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")
     @GetMapping("/{id}")
     public ResponseEntity<BookIssueResponseDto> getById(@PathVariable Long id) {
         return ResponseEntity.ok(bookIssueService.getById(id));
-    }
-
-    // PATRON — view their own issued books
-    @GetMapping("/my")
-    public ResponseEntity<List<BookIssueResponseDto>> getMyIssues(@RequestParam Long libraryAccountId) {
-        return ResponseEntity.ok(bookIssueService.getByAccountId(libraryAccountId));
     }
 
     // LIBRARIAN_STAFF / CHIEF_LIBRARIAN — issue a book directly

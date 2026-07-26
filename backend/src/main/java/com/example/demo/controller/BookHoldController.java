@@ -30,7 +30,7 @@ public class BookHoldController {
         return ResponseEntity.ok(bookHoldService.getAll());
     }
 
-    // PATRON — view their own holds
+    // PATRON — view their own holds using ?libraryAccountId=
     @GetMapping("/my")
     public ResponseEntity<List<BookHoldResponseDto>> getMyHolds(@RequestParam Long libraryAccountId) {
         return ResponseEntity.ok(bookHoldService.getByAccountId(libraryAccountId));
