@@ -4,6 +4,9 @@ import com.example.demo.dto.BookRequestDto;
 import com.example.demo.entity.LibraryBook;
 import com.example.demo.exception.BusinessValidationException;
 import com.example.demo.exception.ResourceNotFoundException;
+import com.example.demo.repository.BookHoldRequestRepository;
+import com.example.demo.repository.BookIssueRecordRepository;
+import com.example.demo.repository.FinePaymentRepository;
 import com.example.demo.repository.LibraryBookRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -14,9 +17,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class BookService {
 
     private final LibraryBookRepository bookRepository;
+    private final BookHoldRequestRepository holdRepository;
+    private final BookIssueRecordRepository issueRepository;
+    private final FinePaymentRepository fineRepository;
 
-    public BookService(LibraryBookRepository bookRepository) {
+    public BookService(LibraryBookRepository bookRepository,
+                       BookHoldRequestRepository holdRepository,
+                       BookIssueRecordRepository issueRepository,
+                       FinePaymentRepository fineRepository) {
         this.bookRepository = bookRepository;
+        this.holdRepository = holdRepository;
+        this.issueRepository = issueRepository;
+        this.fineRepository = fineRepository;
     }
 
     @Transactional(readOnly = true)
@@ -59,6 +71,12 @@ public class BookService {
     @Transactional
     public void deleteBook(Long id) {
         getBookById(id);
+        // Delete dependent records to avoid FK constraint violations
+        issueRepository.findByLibraryBookId(id).forEach(issue -> {
+            fineRepository.findByBookIssueRecordId(issue.getId()).ifPresent(fineRepository::delete);
+        });
+        issueRepository.deleteAll(issueRepository.findByLibraryBookId(id));
+        holdRepository.deleteAll(holdRepository.findByLibraryBookId(id));
         bookRepository.deleteById(id);
     }
 }

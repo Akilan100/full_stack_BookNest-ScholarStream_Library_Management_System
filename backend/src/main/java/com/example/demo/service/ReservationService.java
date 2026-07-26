@@ -1,7 +1,10 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.BookHoldMapper;
+import com.example.demo.dto.BookHoldResponseDto;
 import com.example.demo.dto.ReservationRequestDto;
 import com.example.demo.entity.BookHoldRequest;
+import com.example.demo.entity.HoldStatus;
 import com.example.demo.entity.LibraryBook;
 import com.example.demo.entity.User;
 import com.example.demo.exception.ResourceNotFoundException;
@@ -29,18 +32,19 @@ public class ReservationService {
     }
 
     @Transactional(readOnly = true)
-    public List<BookHoldRequest> getAllReservations() {
-        return bookHoldRequestRepository.findAll();
+    public List<BookHoldResponseDto> getAllReservations() {
+        return bookHoldRequestRepository.findAll().stream().map(BookHoldMapper::toDto).toList();
     }
 
     @Transactional(readOnly = true)
-    public BookHoldRequest getReservationById(Long id) {
-        return bookHoldRequestRepository.findById(id)
+    public BookHoldResponseDto getReservationById(Long id) {
+        BookHoldRequest r = bookHoldRequestRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Reservation not found with id: " + id));
+        return BookHoldMapper.toDto(r);
     }
 
     @Transactional
-    public BookHoldRequest createReservation(ReservationRequestDto dto) {
+    public BookHoldResponseDto createReservation(ReservationRequestDto dto) {
         User user = userRepository.findById(dto.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + dto.getUserId()));
         LibraryBook book = libraryBookRepository.findById(dto.getBookId())
@@ -49,13 +53,14 @@ public class ReservationService {
         request.setLibraryAccount(user);
         request.setLibraryBook(book);
         request.setRequestDate(java.time.LocalDateTime.now());
-        request.setStatus(com.example.demo.entity.HoldStatus.PENDING);
-        return bookHoldRequestRepository.save(request);
+        request.setStatus(HoldStatus.PENDING);
+        return BookHoldMapper.toDto(bookHoldRequestRepository.save(request));
     }
 
     @Transactional
     public void deleteReservation(Long id) {
-        getReservationById(id);
+        bookHoldRequestRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Reservation not found with id: " + id));
         bookHoldRequestRepository.deleteById(id);
     }
 }

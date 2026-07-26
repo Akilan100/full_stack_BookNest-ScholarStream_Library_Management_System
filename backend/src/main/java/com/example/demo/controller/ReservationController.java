@@ -1,6 +1,5 @@
 package com.example.demo.controller;
 
-import com.example.demo.dto.BookHoldMapper;
 import com.example.demo.dto.BookHoldResponseDto;
 import com.example.demo.dto.ReservationRequestDto;
 import com.example.demo.entity.User;
@@ -27,22 +26,21 @@ public class ReservationController {
     @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")
     @GetMapping
     public ResponseEntity<List<BookHoldResponseDto>> getAllReservations() {
-        return ResponseEntity.ok(reservationService.getAllReservations().stream().map(BookHoldMapper::toDto).toList());
+        return ResponseEntity.ok(reservationService.getAllReservations());
     }
 
     @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")
     @GetMapping("/{id}")
     public ResponseEntity<BookHoldResponseDto> getReservationById(@PathVariable Long id) {
-        return ResponseEntity.ok(BookHoldMapper.toDto(reservationService.getReservationById(id)));
+        return ResponseEntity.ok(reservationService.getReservationById(id));
     }
 
-    // PATRON — libraryAccountId overridden from JWT
     @PreAuthorize("hasRole('LIBRARY_PATRON')")
     @PostMapping
     public ResponseEntity<BookHoldResponseDto> createReservation(@RequestBody ReservationRequestDto dto,
                                                                   @AuthenticationPrincipal User currentUser) {
         dto.setUserId(currentUser.getId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(BookHoldMapper.toDto(reservationService.createReservation(dto)));
+        return ResponseEntity.status(HttpStatus.CREATED).body(reservationService.createReservation(dto));
     }
 
     @PreAuthorize("isAuthenticated()")
