@@ -29,15 +29,12 @@ public class BookHoldRequest {
     @Enumerated(EnumType.STRING)
     private HoldStatus status;
 
-    // Legacy field kept for backward compatibility with existing ReservationService
     @Transient
     private String username;
 
-    // Legacy accessor kept so existing ReservationService compiles unchanged
     public String getUsername() { return libraryAccount != null ? libraryAccount.getEmail() : username; }
     public void setUsername(String username) { this.username = username; }
 
-    // Legacy book accessor kept so existing ReservationService compiles unchanged
     public LibraryBook getBook() { return libraryBook; }
     public void setBook(LibraryBook book) { this.libraryBook = book; }
 

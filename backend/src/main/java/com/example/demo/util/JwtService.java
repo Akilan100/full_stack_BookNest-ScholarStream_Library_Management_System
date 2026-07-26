@@ -19,7 +19,6 @@ public class JwtService {
 
     private static final Logger log = LoggerFactory.getLogger(JwtService.class);
 
-    // Base64-encoded 256-bit secret (replace with a value from: openssl rand -base64 32)
     private String secret = "QE5jUmZValhOcjI1dTh4L0E/RChnK0tiUGRTZ1ZrWXA=";
 
     private long expiration = 1000L * 60 * 60 * 24;
