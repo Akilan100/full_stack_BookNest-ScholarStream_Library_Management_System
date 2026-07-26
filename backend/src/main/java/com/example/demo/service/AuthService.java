@@ -4,10 +4,14 @@ import com.example.demo.dto.AuthRequest;
 import com.example.demo.dto.AuthResponse;
 import com.example.demo.entity.User;
 import com.example.demo.exception.BusinessValidationException;
+import com.example.demo.repository.BookHoldRequestRepository;
+import com.example.demo.repository.BookIssueRecordRepository;
+import com.example.demo.repository.FinePaymentRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.util.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService {
@@ -15,11 +19,19 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final BookHoldRequestRepository holdRepository;
+    private final BookIssueRecordRepository issueRepository;
+    private final FinePaymentRepository fineRepository;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService,
+                       BookHoldRequestRepository holdRepository, BookIssueRecordRepository issueRepository,
+                       FinePaymentRepository fineRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.holdRepository = holdRepository;
+        this.issueRepository = issueRepository;
+        this.fineRepository = fineRepository;
     }
 
     public AuthResponse register(AuthRequest req) {
@@ -36,9 +48,16 @@ public class AuthService {
         return new AuthResponse(token, user.getRole(), user.getEmail(), user.getFullName(), user.getId());
     }
 
+    @Transactional
     public void deleteByEmail(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BusinessValidationException("User not found"));
+        // cascade: fines → issues → holds → user
+        issueRepository.findByLibraryAccountId(user.getId()).forEach(issue ->
+            fineRepository.findByBookIssueRecordId(issue.getId()).ifPresent(fineRepository::delete)
+        );
+        issueRepository.deleteAll(issueRepository.findByLibraryAccountId(user.getId()));
+        holdRepository.deleteAll(holdRepository.findByLibraryAccountId(user.getId()));
         userRepository.delete(user);
     }
 
