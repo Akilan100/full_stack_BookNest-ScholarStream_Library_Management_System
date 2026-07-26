@@ -7,6 +7,7 @@ import com.example.demo.repository.UserRepository;
 import com.example.demo.service.AuthService;
 import com.example.demo.util.JwtService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,6 +26,7 @@ public class AuthController {
         this.jwtService = jwtService;
     }
 
+    @PreAuthorize("hasRole('CHIEF_LIBRARIAN')")
     @GetMapping("/users")
     public ResponseEntity<List<UserResponse>> getAllUsers() {
         List<UserResponse> users = userRepository.findAll().stream()
@@ -38,12 +40,14 @@ public class AuthController {
         return ResponseEntity.ok(authService.register(req));
     }
 
+    @PreAuthorize("hasRole('CHIEF_LIBRARIAN')")
     @DeleteMapping("/users/{email}")
     public ResponseEntity<Void> deleteUser(@PathVariable String email) {
         authService.deleteByEmail(email);
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("hasRole('CHIEF_LIBRARIAN')")
     @PutMapping("/users/{id}")
     public ResponseEntity<AuthResponse> updateUser(@PathVariable Long id, @RequestBody AuthRequest req) {
         return ResponseEntity.ok(authService.updateById(id, req));

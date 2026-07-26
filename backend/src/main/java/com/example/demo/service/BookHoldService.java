@@ -42,6 +42,11 @@ public class BookHoldService {
         return holdRepository.findAll().stream().map(BookHoldMapper::toDto).toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<BookHoldResponseDto> getByAccountId(Long accountId) {
+        return holdRepository.findByLibraryAccountId(accountId).stream().map(BookHoldMapper::toDto).toList();
+    }
+
     @Transactional
     public BookHoldResponseDto placeHold(BookHoldRequestDto dto) {
         LibraryBook book = bookRepository.findById(dto.getLibraryBookId())

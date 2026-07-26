@@ -45,6 +45,11 @@ public class BookIssueService {
         return BookIssueMapper.toDto(findById(id));
     }
 
+    @Transactional(readOnly = true)
+    public List<BookIssueResponseDto> getByAccountId(Long accountId) {
+        return issueRepository.findByLibraryAccountId(accountId).stream().map(BookIssueMapper::toDto).toList();
+    }
+
     @Transactional
     public BookIssueResponseDto issueBook(BookIssueRequestDto dto) {
         LibraryBook book = bookRepository.findById(dto.getLibraryBookId())
