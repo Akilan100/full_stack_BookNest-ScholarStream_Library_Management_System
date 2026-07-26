@@ -46,7 +46,7 @@ public class BookService {
         LibraryBook existing = getBookById(id);
         existing.setTitle(dto.getTitle());
         existing.setAuthor(dto.getAuthor());
-        existing.setIsbn(existing.getIsbn());
+        existing.setIsbn(dto.getIsbn());
         existing.setCategory(dto.getCategory());
         existing.setTotalCopies(dto.getTotalCopies());
         return bookRepository.save(existing);

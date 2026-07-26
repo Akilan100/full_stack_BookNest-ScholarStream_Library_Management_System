@@ -20,13 +20,6 @@ public class ReservationService {
     private final UserRepository userRepository;
     private final LibraryBookRepository libraryBookRepository;
 
-    public ReservationService(BookHoldRequestRepository bookHoldRequestRepository) {
-        this.bookHoldRequestRepository = bookHoldRequestRepository;
-        this.userRepository = null;
-        this.libraryBookRepository = null;
-    }
-
-    @org.springframework.beans.factory.annotation.Autowired
     public ReservationService(BookHoldRequestRepository bookHoldRequestRepository,
                               UserRepository userRepository,
                               LibraryBookRepository libraryBookRepository) {
@@ -53,8 +46,10 @@ public class ReservationService {
         LibraryBook book = libraryBookRepository.findById(dto.getBookId())
                 .orElseThrow(() -> new ResourceNotFoundException("Book not found with id: " + dto.getBookId()));
         BookHoldRequest request = new BookHoldRequest();
-        request.setUsername(user.getEmail());
-        request.setBook(book);
+        request.setLibraryAccount(user);
+        request.setLibraryBook(book);
+        request.setRequestDate(java.time.LocalDateTime.now());
+        request.setStatus(com.example.demo.entity.HoldStatus.PENDING);
         return bookHoldRequestRepository.save(request);
     }
 

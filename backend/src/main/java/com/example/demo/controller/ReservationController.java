@@ -1,7 +1,8 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.BookHoldMapper;
+import com.example.demo.dto.BookHoldResponseDto;
 import com.example.demo.dto.ReservationRequestDto;
-import com.example.demo.entity.BookHoldRequest;
 import com.example.demo.service.ReservationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,23 +22,23 @@ public class ReservationController {
     }
 
     @GetMapping
-    public ResponseEntity<List<BookHoldRequest>> getAllReservations() {
-        return ResponseEntity.ok(reservationService.getAllReservations());
+    public ResponseEntity<List<BookHoldResponseDto>> getAllReservations() {
+        return ResponseEntity.ok(reservationService.getAllReservations().stream().map(BookHoldMapper::toDto).toList());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<BookHoldRequest> getReservationById(@PathVariable Long id) {
-        return ResponseEntity.ok(reservationService.getReservationById(id));
+    public ResponseEntity<BookHoldResponseDto> getReservationById(@PathVariable Long id) {
+        return ResponseEntity.ok(BookHoldMapper.toDto(reservationService.getReservationById(id)));
     }
 
     @PostMapping
-    public ResponseEntity<BookHoldRequest> createReservation(@RequestBody ReservationRequestDto dto) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(reservationService.createReservation(dto));
+    public ResponseEntity<BookHoldResponseDto> createReservation(@RequestBody ReservationRequestDto dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(BookHoldMapper.toDto(reservationService.createReservation(dto)));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> deleteReservation(@PathVariable Long id) {
         reservationService.deleteReservation(id);
-        return ResponseEntity.ok(Map.of("message", "BookHoldRequest deleted successfully."));
+        return ResponseEntity.ok(Map.of("message", "Reservation deleted successfully."));
     }
 }
