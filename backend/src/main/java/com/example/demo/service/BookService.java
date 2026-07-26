@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.dto.BookRequestDto;
 import com.example.demo.entity.LibraryBook;
+import com.example.demo.exception.BusinessValidationException;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.LibraryBookRepository;
 import org.springframework.data.domain.Page;
@@ -44,6 +45,9 @@ public class BookService {
     @Transactional
     public LibraryBook updateBook(Long id, BookRequestDto dto) {
         LibraryBook existing = getBookById(id);
+        bookRepository.findByIsbn(dto.getIsbn())
+                .filter(b -> !b.getId().equals(id))
+                .ifPresent(b -> { throw new BusinessValidationException("ISBN already in use by another book: " + dto.getIsbn()); });
         existing.setTitle(dto.getTitle());
         existing.setAuthor(dto.getAuthor());
         existing.setIsbn(dto.getIsbn());
