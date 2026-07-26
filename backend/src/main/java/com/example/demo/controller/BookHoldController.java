@@ -23,32 +23,48 @@ public class BookHoldController {
         this.bookHoldService = bookHoldService;
     }
 
+    // LIBRARIAN_STAFF / CHIEF_LIBRARIAN — view all holds
+    @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")
     @GetMapping
     public ResponseEntity<List<BookHoldResponseDto>> getAll() {
         return ResponseEntity.ok(bookHoldService.getAll());
     }
 
+    // PATRON — view their own holds
+    @GetMapping("/my")
+    public ResponseEntity<List<BookHoldResponseDto>> getMyHolds(@RequestParam Long libraryAccountId) {
+        return ResponseEntity.ok(bookHoldService.getByAccountId(libraryAccountId));
+    }
+
+    // PATRON — place a hold
+    @PreAuthorize("hasRole('LIBRARY_PATRON')")
     @PostMapping
     public ResponseEntity<BookHoldResponseDto> placeHold(@Valid @RequestBody BookHoldRequestDto dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(bookHoldService.placeHold(dto));
     }
 
-    @PutMapping("/{id}/cancel")
-    public ResponseEntity<BookHoldResponseDto> cancelHold(@PathVariable Long id) {
-        return ResponseEntity.ok(bookHoldService.cancelHold(id));
-    }
-
+    // LIBRARIAN_STAFF / CHIEF_LIBRARIAN — mark book ready for pickup
     @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")
     @PutMapping("/{id}/pickup")
     public ResponseEntity<BookHoldResponseDto> markReadyForPickup(@PathVariable Long id) {
         return ResponseEntity.ok(bookHoldService.markReadyForPickup(id));
     }
 
+    // LIBRARIAN_STAFF / CHIEF_LIBRARIAN — fulfill hold, hand book to patron
+    @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")
     @PutMapping("/{id}/fulfill")
     public ResponseEntity<BookIssueResponseDto> fulfillHold(@PathVariable Long id) {
         return ResponseEntity.ok(bookHoldService.fulfillHold(id));
     }
 
+    // PATRON — cancel their own hold
+    @PutMapping("/{id}/cancel")
+    public ResponseEntity<BookHoldResponseDto> cancelHold(@PathVariable Long id) {
+        return ResponseEntity.ok(bookHoldService.cancelHold(id));
+    }
+
+    // LIBRARIAN_STAFF / CHIEF_LIBRARIAN — delete hold record
+    @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> delete(@PathVariable Long id) {
         bookHoldService.delete(id);
