@@ -336,7 +336,7 @@
           }
         },
         {
-          "name": "Fulfill Hold — Issue Book to Patron (LIBRARIAN_STAFF / CHIEF_LIBRARIAN)",
+          "name": "Fulfill Hold — Issue Book to Patron (Any Role)",
           "request": {
             "method": "PUT",
             "header": [],
