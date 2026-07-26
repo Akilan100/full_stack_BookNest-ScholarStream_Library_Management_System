@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.BookHoldRequestDto;
 import com.example.demo.dto.BookHoldResponseDto;
+import com.example.demo.dto.BookIssueResponseDto;
 import com.example.demo.service.BookHoldService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -39,6 +40,11 @@ public class BookHoldController {
     @PutMapping("/{id}/pickup")
     public ResponseEntity<BookHoldResponseDto> markReadyForPickup(@PathVariable Long id) {
         return ResponseEntity.ok(bookHoldService.markReadyForPickup(id));
+    }
+
+    @PutMapping("/{id}/fulfill")
+    public ResponseEntity<BookIssueResponseDto> fulfillHold(@PathVariable Long id) {
+        return ResponseEntity.ok(bookHoldService.fulfillHold(id));
     }
 
     @DeleteMapping("/{id}")

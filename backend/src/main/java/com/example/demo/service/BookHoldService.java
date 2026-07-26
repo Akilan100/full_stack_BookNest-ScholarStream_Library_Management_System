@@ -3,18 +3,19 @@ package com.example.demo.service;
 import com.example.demo.dto.BookHoldMapper;
 import com.example.demo.dto.BookHoldRequestDto;
 import com.example.demo.dto.BookHoldResponseDto;
-import com.example.demo.entity.BookHoldRequest;
-import com.example.demo.entity.HoldStatus;
-import com.example.demo.entity.LibraryBook;
-import com.example.demo.entity.User;
+import com.example.demo.dto.BookIssueResponseDto;
+import com.example.demo.dto.BookIssueMapper;
+import com.example.demo.entity.*;
 import com.example.demo.exception.BusinessValidationException;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.BookHoldRequestRepository;
+import com.example.demo.repository.BookIssueRecordRepository;
 import com.example.demo.repository.LibraryBookRepository;
 import com.example.demo.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -24,13 +25,16 @@ public class BookHoldService {
     private final BookHoldRequestRepository holdRepository;
     private final LibraryBookRepository bookRepository;
     private final UserRepository userRepository;
+    private final BookIssueRecordRepository issueRepository;
 
     public BookHoldService(BookHoldRequestRepository holdRepository,
                            LibraryBookRepository bookRepository,
-                           UserRepository userRepository) {
+                           UserRepository userRepository,
+                           BookIssueRecordRepository issueRepository) {
         this.holdRepository = holdRepository;
         this.bookRepository = bookRepository;
         this.userRepository = userRepository;
+        this.issueRepository = issueRepository;
     }
 
     @Transactional(readOnly = true)
@@ -71,6 +75,34 @@ public class BookHoldService {
         }
         hold.setStatus(HoldStatus.READY_FOR_PICKUP);
         return BookHoldMapper.toDto(holdRepository.save(hold));
+    }
+
+    @Transactional
+    public BookIssueResponseDto fulfillHold(Long id) {
+        BookHoldRequest hold = findById(id);
+        if (hold.getStatus() != HoldStatus.READY_FOR_PICKUP) {
+            throw new BusinessValidationException("Hold must be READY_FOR_PICKUP to fulfill. Current status: " + hold.getStatus());
+        }
+        LibraryBook book = hold.getLibraryBook();
+        if (book.getAvailableCopies() < 1) {
+            throw new BusinessValidationException("No available copies for book: " + book.getTitle());
+        }
+        book.setAvailableCopies(book.getAvailableCopies() - 1);
+        bookRepository.save(book);
+
+        BookIssueRecord record = new BookIssueRecord();
+        record.setLibraryBook(book);
+        record.setLibraryAccount(hold.getLibraryAccount());
+        record.setIssueDate(LocalDateTime.now());
+        record.setDueDate(LocalDateTime.now().plusDays(14));
+        record.setStatus(IssueStatus.ISSUED);
+        record.setFineAmount(BigDecimal.ZERO);
+        issueRepository.save(record);
+
+        hold.setStatus(HoldStatus.FULFILLED);
+        holdRepository.save(hold);
+
+        return BookIssueMapper.toDto(record);
     }
 
     @Transactional

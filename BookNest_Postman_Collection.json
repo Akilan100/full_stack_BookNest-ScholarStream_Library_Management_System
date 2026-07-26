@@ -336,6 +336,14 @@
           }
         },
         {
+          "name": "Fulfill Hold — Issue Book to Patron",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/book-holds/1/fulfill", "host": ["{{baseUrl}}"], "path": ["api", "book-holds", "1", "fulfill"] }
+          }
+        },
+        {
           "name": "Cancel Hold",
           "request": {
             "method": "PUT",
