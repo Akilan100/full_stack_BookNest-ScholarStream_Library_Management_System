@@ -328,11 +328,19 @@
           }
         },
         {
-          "name": "Mark Hold Ready for Pickup",
+          "name": "Mark Hold Ready for Pickup (LIBRARIAN_STAFF / CHIEF_LIBRARIAN)",
           "request": {
             "method": "PUT",
             "header": [],
             "url": { "raw": "{{baseUrl}}/api/book-holds/1/pickup", "host": ["{{baseUrl}}"], "path": ["api", "book-holds", "1", "pickup"] }
+          }
+        },
+        {
+          "name": "Fulfill Hold — Issue Book to Patron (LIBRARIAN_STAFF / CHIEF_LIBRARIAN)",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/book-holds/1/fulfill", "host": ["{{baseUrl}}"], "path": ["api", "book-holds", "1", "fulfill"] }
           }
         },
         {

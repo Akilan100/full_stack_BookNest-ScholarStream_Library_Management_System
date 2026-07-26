@@ -7,6 +7,7 @@ import com.example.demo.service.BookHoldService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -37,11 +38,13 @@ public class BookHoldController {
         return ResponseEntity.ok(bookHoldService.cancelHold(id));
     }
 
+    @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")
     @PutMapping("/{id}/pickup")
     public ResponseEntity<BookHoldResponseDto> markReadyForPickup(@PathVariable Long id) {
         return ResponseEntity.ok(bookHoldService.markReadyForPickup(id));
     }
 
+    @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")
     @PutMapping("/{id}/fulfill")
     public ResponseEntity<BookIssueResponseDto> fulfillHold(@PathVariable Long id) {
         return ResponseEntity.ok(bookHoldService.fulfillHold(id));
