@@ -336,7 +336,7 @@
           }
         },
         {
-          "name": "Fulfill Hold — Issue Book to Patron (Any Role)",
+          "name": "Fulfill Hold — Patron Collects Book (Any Role)",
           "request": {
             "method": "PUT",
             "header": [],
