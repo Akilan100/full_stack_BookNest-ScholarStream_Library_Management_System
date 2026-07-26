@@ -44,7 +44,6 @@ public class BookHoldController {
         return ResponseEntity.ok(bookHoldService.markReadyForPickup(id));
     }
 
-    @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")
     @PutMapping("/{id}/fulfill")
     public ResponseEntity<BookIssueResponseDto> fulfillHold(@PathVariable Long id) {
         return ResponseEntity.ok(bookHoldService.fulfillHold(id));
