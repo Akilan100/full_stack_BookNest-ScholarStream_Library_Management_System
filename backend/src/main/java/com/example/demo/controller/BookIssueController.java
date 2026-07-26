@@ -2,11 +2,13 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.BookIssueRequestDto;
 import com.example.demo.dto.BookIssueResponseDto;
+import com.example.demo.entity.User;
 import com.example.demo.service.BookIssueService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,17 +24,17 @@ public class BookIssueController {
         this.bookIssueService = bookIssueService;
     }
 
-    // LIBRARIAN_STAFF / CHIEF_LIBRARIAN — view all issued books
     @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")
     @GetMapping
     public ResponseEntity<List<BookIssueResponseDto>> getAll() {
         return ResponseEntity.ok(bookIssueService.getAll());
     }
 
-    // PATRON — view their own borrowed books using ?libraryAccountId=
+    // PATRON — view only their own borrowed books (JWT identity enforced)
+    @PreAuthorize("hasRole('LIBRARY_PATRON')")
     @GetMapping("/my")
-    public ResponseEntity<List<BookIssueResponseDto>> getMyIssues(@RequestParam Long libraryAccountId) {
-        return ResponseEntity.ok(bookIssueService.getByAccountId(libraryAccountId));
+    public ResponseEntity<List<BookIssueResponseDto>> getMyIssues(@AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(bookIssueService.getByAccountId(currentUser.getId()));
     }
 
     // LIBRARIAN_STAFF / CHIEF_LIBRARIAN — view issue by id

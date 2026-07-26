@@ -21,6 +21,7 @@ public class FinePaymentController {
         this.finePaymentService = finePaymentService;
     }
 
+    @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")
     @GetMapping
     public ResponseEntity<List<FinePaymentResponseDto>> getAll() {
         return ResponseEntity.ok(finePaymentService.getAll());
@@ -32,6 +33,7 @@ public class FinePaymentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(finePaymentService.createFine(dto));
     }
 
+    @PreAuthorize("hasRole('LIBRARY_PATRON')")
     @PutMapping("/{id}/pay")
     public ResponseEntity<FinePaymentResponseDto> payFine(@PathVariable Long id) {
         return ResponseEntity.ok(finePaymentService.payFine(id));

@@ -63,8 +63,11 @@ public class BookHoldService {
     }
 
     @Transactional
-    public BookHoldResponseDto cancelHold(Long id) {
+    public BookHoldResponseDto cancelHold(Long id, Long currentUserId) {
         BookHoldRequest hold = findById(id);
+        if (!hold.getLibraryAccount().getId().equals(currentUserId)) {
+            throw new BusinessValidationException("You can only cancel your own holds.");
+        }
         if (hold.getStatus() == HoldStatus.FULFILLED || hold.getStatus() == HoldStatus.CANCELLED) {
             throw new BusinessValidationException("Hold cannot be cancelled in status: " + hold.getStatus());
         }
