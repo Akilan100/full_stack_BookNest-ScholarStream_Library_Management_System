@@ -33,12 +33,12 @@ public class ReservationService {
 
     @Transactional(readOnly = true)
     public List<BookHoldResponseDto> getAllReservations() {
-        return bookHoldRequestRepository.findAll().stream().map(BookHoldMapper::toDto).toList();
+        return bookHoldRequestRepository.findAllWithDetails().stream().map(BookHoldMapper::toDto).toList();
     }
 
     @Transactional(readOnly = true)
     public BookHoldResponseDto getReservationById(Long id) {
-        BookHoldRequest r = bookHoldRequestRepository.findById(id)
+        BookHoldRequest r = bookHoldRequestRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Reservation not found with id: " + id));
         return BookHoldMapper.toDto(r);
     }
