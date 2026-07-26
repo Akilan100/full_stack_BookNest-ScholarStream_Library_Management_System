@@ -39,12 +39,12 @@ public class BookHoldService {
 
     @Transactional(readOnly = true)
     public List<BookHoldResponseDto> getAll() {
-        return holdRepository.findAll().stream().map(BookHoldMapper::toDto).toList();
+        return holdRepository.findAllWithDetails().stream().map(BookHoldMapper::toDto).toList();
     }
 
     @Transactional(readOnly = true)
     public List<BookHoldResponseDto> getByAccountId(Long accountId) {
-        return holdRepository.findByLibraryAccountId(accountId).stream().map(BookHoldMapper::toDto).toList();
+        return holdRepository.findByLibraryAccountIdWithDetails(accountId).stream().map(BookHoldMapper::toDto).toList();
     }
 
     @Transactional

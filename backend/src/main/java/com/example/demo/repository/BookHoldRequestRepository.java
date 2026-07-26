@@ -25,4 +25,7 @@ public interface BookHoldRequestRepository extends JpaRepository<BookHoldRequest
 
     @Query("SELECT h FROM BookHoldRequest h JOIN FETCH h.libraryBook JOIN FETCH h.libraryAccount WHERE h.id = :id")
     Optional<BookHoldRequest> findByIdWithDetails(@Param("id") Long id);
+
+    @Query("SELECT h FROM BookHoldRequest h JOIN FETCH h.libraryBook JOIN FETCH h.libraryAccount WHERE h.libraryAccount.id = :accountId")
+    List<BookHoldRequest> findByLibraryAccountIdWithDetails(@Param("accountId") Long accountId);
 }
