@@ -12,7 +12,7 @@ import java.util.Optional;
 
 public interface LibraryBookRepository extends JpaRepository<LibraryBook, Long> {
 
-    Optional<LibraryBook> findByTitle(String title);
+    Optional<LibraryBook> findByIsbn(String isbn);
 
     @Query("SELECT b FROM LibraryBook b WHERE b.author = :author")
     List<LibraryBook> findAllByAuthor(@Param("author") String author);
