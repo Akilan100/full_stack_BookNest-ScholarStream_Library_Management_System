@@ -10,6 +10,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+
 @Service
 public class BookService {
 
@@ -45,9 +47,11 @@ public class BookService {
     @Transactional
     public LibraryBook updateBook(Long id, BookRequestDto dto) {
         LibraryBook existing = getBookById(id);
-        bookRepository.findByIsbn(dto.getIsbn())
-                .filter(b -> !b.getId().equals(id))
-                .ifPresent(b -> { throw new BusinessValidationException("ISBN already in use by another book: " + dto.getIsbn()); });
+        if (dto.getIsbn() != null) {
+            Optional.ofNullable(bookRepository.findByIsbn(dto.getIsbn()).orElse(null))
+                    .filter(b -> !b.getId().equals(id))
+                    .ifPresent(b -> { throw new BusinessValidationException("ISBN already in use by another book: " + dto.getIsbn()); });
+        }
         existing.setTitle(dto.getTitle());
         existing.setAuthor(dto.getAuthor());
         existing.setIsbn(dto.getIsbn());
