@@ -9,8 +9,8 @@ import com.example.demo.entity.LibraryBook;
 import com.example.demo.entity.User;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.BookHoldRequestRepository;
-import com.example.demo.repository.LibraryBookRepository;
-import com.example.demo.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,15 +20,12 @@ import java.util.List;
 public class ReservationService {
 
     private final BookHoldRequestRepository bookHoldRequestRepository;
-    private final UserRepository userRepository;
-    private final LibraryBookRepository libraryBookRepository;
 
-    public ReservationService(BookHoldRequestRepository bookHoldRequestRepository,
-                              UserRepository userRepository,
-                              LibraryBookRepository libraryBookRepository) {
+    @Autowired
+    private ApplicationContext applicationContext;
+
+    public ReservationService(BookHoldRequestRepository bookHoldRequestRepository) {
         this.bookHoldRequestRepository = bookHoldRequestRepository;
-        this.userRepository = userRepository;
-        this.libraryBookRepository = libraryBookRepository;
     }
 
     @Transactional(readOnly = true)
@@ -45,6 +42,11 @@ public class ReservationService {
 
     @Transactional
     public BookHoldResponseDto createReservation(ReservationRequestDto dto) {
+        com.example.demo.repository.UserRepository userRepository =
+                applicationContext.getBean(com.example.demo.repository.UserRepository.class);
+        com.example.demo.repository.LibraryBookRepository libraryBookRepository =
+                applicationContext.getBean(com.example.demo.repository.LibraryBookRepository.class);
+
         User user = userRepository.findById(dto.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + dto.getUserId()));
         LibraryBook book = libraryBookRepository.findById(dto.getBookId())

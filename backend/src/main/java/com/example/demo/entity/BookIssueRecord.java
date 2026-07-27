@@ -39,6 +39,9 @@ public class BookIssueRecord {
     @Column(name = "fine_amount", precision = 10, scale = 2)
     private BigDecimal fineAmount;
 
+    @OneToOne(mappedBy = "bookIssueRecord", cascade = CascadeType.ALL, orphanRemoval = true)
+    private FinePayment finePayment;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
