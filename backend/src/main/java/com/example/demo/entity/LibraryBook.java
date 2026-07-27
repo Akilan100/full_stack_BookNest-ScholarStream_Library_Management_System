@@ -39,4 +39,12 @@ public class LibraryBook {
     @JsonIgnore
     @OneToMany(mappedBy = "book", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Reservation> reservations = new ArrayList<>();
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "libraryBook", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<BookHoldRequest> holdRequests = new ArrayList<>();
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "libraryBook", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<BookIssueRecord> issueRecords = new ArrayList<>();
 }
