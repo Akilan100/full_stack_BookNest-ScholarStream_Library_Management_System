@@ -29,8 +29,11 @@ public class JwtService {
 
     public String generateToken(UserDetails userDetails) {
         log.debug("Generating token for user: {}, authorities: {}", userDetails.getUsername(), userDetails.getAuthorities());
+        String role = userDetails.getAuthorities().stream()
+                .findFirst().map(a -> a.getAuthority()).orElse("");
         return Jwts.builder()
                 .setSubject(userDetails.getUsername())
+                .claim("role", role)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
