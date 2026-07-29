@@ -52,7 +52,6 @@ public class AuthService {
     public void deleteByEmail(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BusinessValidationException("User not found"));
-        // cascade: fines → issues → holds → user
         issueRepository.findByLibraryAccountId(user.getId()).forEach(issue ->
             fineRepository.findByBookIssueRecordId(issue.getId()).ifPresent(fineRepository::delete)
         );
