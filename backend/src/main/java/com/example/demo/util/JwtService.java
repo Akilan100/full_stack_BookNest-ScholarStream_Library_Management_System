@@ -24,13 +24,17 @@ public class JwtService {
     private long expiration = 1000L * 60 * 60 * 24;
 
     private Key getSigningKey() {
-        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
+        try {
+            return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
+        } catch (Exception e) {
+            return Keys.hmacShaKeyFor(secret.getBytes());
+        }
     }
 
     public String generateToken(UserDetails userDetails) {
         log.debug("Generating token for user: {}, authorities: {}", userDetails.getUsername(), userDetails.getAuthorities());
-        String role = userDetails.getAuthorities().stream()
-                .findFirst().map(a -> a.getAuthority()).orElse("");
+        java.util.Collection<? extends org.springframework.security.core.GrantedAuthority> authorities = userDetails.getAuthorities();
+        String role = (authorities != null) ? authorities.stream().findFirst().map(a -> a.getAuthority()).orElse("") : "";
         return Jwts.builder()
                 .setSubject(userDetails.getUsername())
                 .claim("role", role)
