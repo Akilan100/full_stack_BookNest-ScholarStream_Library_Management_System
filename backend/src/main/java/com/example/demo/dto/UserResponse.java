@@ -13,7 +13,6 @@ public class UserResponse {
     public UserResponse(Long id, String email, String password, String fullName, String role, String token) {
         this.id = id;
         this.email = email;
-        // password intentionally excluded from response
         this.fullName = fullName;
         this.role = role;
         this.token = token;
