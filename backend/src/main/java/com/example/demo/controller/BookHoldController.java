@@ -31,14 +31,12 @@ public class BookHoldController {
         return ResponseEntity.ok(bookHoldService.getAll());
     }
 
-    // PATRON — view only their own holds (JWT identity enforced)
     @PreAuthorize("hasRole('LIBRARY_PATRON')")
     @GetMapping("/my")
     public ResponseEntity<List<BookHoldResponseDto>> getMyHolds(@AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(bookHoldService.getByAccountId(currentUser.getId()));
     }
 
-    // PATRON — place a hold (libraryAccountId overridden from JWT)
     @PreAuthorize("hasRole('LIBRARY_PATRON')")
     @PostMapping
     public ResponseEntity<BookHoldResponseDto> placeHold(@Valid @RequestBody BookHoldRequestDto dto,
