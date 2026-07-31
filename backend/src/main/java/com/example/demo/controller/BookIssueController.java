@@ -30,35 +30,30 @@ public class BookIssueController {
         return ResponseEntity.ok(bookIssueService.getAll());
     }
 
-    // PATRON — view only their own borrowed books (JWT identity enforced)
     @PreAuthorize("hasRole('LIBRARY_PATRON')")
     @GetMapping("/my")
     public ResponseEntity<List<BookIssueResponseDto>> getMyIssues(@AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(bookIssueService.getByAccountId(currentUser.getId()));
     }
 
-    // LIBRARIAN_STAFF / CHIEF_LIBRARIAN — view issue by id
     @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")
     @GetMapping("/{id}")
     public ResponseEntity<BookIssueResponseDto> getById(@PathVariable Long id) {
         return ResponseEntity.ok(bookIssueService.getById(id));
     }
 
-    // LIBRARIAN_STAFF / CHIEF_LIBRARIAN — issue a book directly
     @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")
     @PostMapping
     public ResponseEntity<BookIssueResponseDto> issueBook(@Valid @RequestBody BookIssueRequestDto dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(bookIssueService.issueBook(dto));
     }
 
-    // LIBRARIAN_STAFF / CHIEF_LIBRARIAN — return a book
     @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")
     @PutMapping("/{id}/return")
     public ResponseEntity<BookIssueResponseDto> returnBook(@PathVariable Long id) {
         return ResponseEntity.ok(bookIssueService.returnBook(id));
     }
 
-    // LIBRARIAN_STAFF / CHIEF_LIBRARIAN — mark book as lost
     @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")
     @PutMapping("/{id}/lost")
     public ResponseEntity<BookIssueResponseDto> markLost(@PathVariable Long id) {
