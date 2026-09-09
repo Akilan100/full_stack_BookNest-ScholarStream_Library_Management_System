@@ -37,11 +37,16 @@ public class BookHoldController {
         return ResponseEntity.ok(bookHoldService.getByAccountId(currentUser.getId()));
     }
 
-    @PreAuthorize("hasRole('LIBRARY_PATRON')")
+    @PreAuthorize("hasAnyRole('LIBRARY_PATRON','LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")
     @PostMapping
-    public ResponseEntity<BookHoldResponseDto> placeHold(@Valid @RequestBody BookHoldRequestDto dto,
+    public ResponseEntity<BookHoldResponseDto> placeHold(@RequestBody BookHoldRequestDto dto,
                                                           @AuthenticationPrincipal User currentUser) {
-        dto.setLibraryAccountId(currentUser.getId());
+        if ("LIBRARY_PATRON".equals(currentUser.getRole()) || dto.getLibraryAccountId() == null) {
+            dto.setLibraryAccountId(currentUser.getId());
+        }
+        if (dto.getLibraryBookId() == null) {
+            throw new com.example.demo.exception.BusinessValidationException("libraryBookId must not be null");
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(bookHoldService.placeHold(dto));
     }
 

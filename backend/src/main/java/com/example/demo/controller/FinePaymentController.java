@@ -27,6 +27,12 @@ public class FinePaymentController {
         return ResponseEntity.ok(finePaymentService.getAll());
     }
 
+    @PreAuthorize("hasRole('LIBRARY_PATRON')")
+    @GetMapping("/my")
+    public ResponseEntity<List<FinePaymentResponseDto>> getMyFines(@org.springframework.security.core.annotation.AuthenticationPrincipal com.example.demo.entity.User currentUser) {
+        return ResponseEntity.ok(finePaymentService.getByAccountId(currentUser.getId()));
+    }
+
     @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")
     @PostMapping
     public ResponseEntity<FinePaymentResponseDto> createFine(@Valid @RequestBody FinePaymentRequestDto dto) {

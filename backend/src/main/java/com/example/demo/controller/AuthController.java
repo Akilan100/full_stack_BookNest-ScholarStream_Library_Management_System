@@ -26,7 +26,7 @@ public class AuthController {
         this.jwtService = jwtService;
     }
 
-    @PreAuthorize("hasRole('CHIEF_LIBRARIAN')")
+    @PreAuthorize("hasAnyRole('CHIEF_LIBRARIAN','LIBRARIAN_STAFF')")
     @GetMapping("/users")
     public ResponseEntity<List<UserResponse>> getAllUsers() {
         List<UserResponse> users = userRepository.findAll().stream()

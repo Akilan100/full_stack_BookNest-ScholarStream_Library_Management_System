@@ -38,6 +38,11 @@ public class FinePaymentService {
         return fineRepository.findAll().stream().map(FinePaymentMapper::toDto).toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<FinePaymentResponseDto> getByAccountId(Long accountId) {
+        return fineRepository.findByLibraryAccountId(accountId).stream().map(FinePaymentMapper::toDto).toList();
+    }
+
     @Transactional
     public FinePaymentResponseDto createFine(FinePaymentRequestDto dto) {
         BookIssueRecord record = issueRepository.findById(dto.getBookIssueRecordId())

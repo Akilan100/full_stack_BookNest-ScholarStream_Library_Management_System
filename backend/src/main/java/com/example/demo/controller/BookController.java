@@ -4,6 +4,7 @@ import com.example.demo.dto.BookRequestDto;
 import com.example.demo.entity.LibraryBook;
 import com.example.demo.service.BookService;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,10 +25,15 @@ public class BookController {
     @GetMapping
     public ResponseEntity<Page<LibraryBook>> getAllBooks(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "100") int size,
             @RequestParam(required = false) String title,
             @RequestParam(required = false) String category) {
         return ResponseEntity.ok(bookService.getAllBooks(page, size, title, category));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<LibraryBook>> searchBooks(@RequestParam(required = false, defaultValue = "") String query) {
+        return ResponseEntity.ok(bookService.getAllBooks(0, 100, query.isEmpty() ? null : query, null).getContent());
     }
 
     @GetMapping("/{id}")
