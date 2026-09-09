@@ -80,30 +80,30 @@ function DashboardPage({ onNavigate, books = [], issueRecords = [], holds = [], 
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      {/* Hero Welcome Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-slate-800">
-        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+      {/* Hero Welcome Banner (Clean White Theme) */}
+      <div className="bg-white rounded-2xl p-6 sm:p-8 text-slate-900 shadow-sm border border-slate-200 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-blue-50/50 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
         <div className="relative z-10 max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-400/20 text-blue-300 text-xs font-semibold mb-3">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold mb-3">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
             LIVE CIRCULATION TELEMETRY
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 mb-2">
             Library Administrative Operations Center
           </h1>
-          <p className="text-slate-300 text-sm leading-relaxed">
+          <p className="text-slate-600 text-sm leading-relaxed">
             Master dashboard overview tracking physical shelf distribution, checkouts and collection liquidity.
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <button
               onClick={() => onNavigate && onNavigate('catalogue')}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
             >
               Explore Catalogue <span>&rarr;</span>
             </button>
             <button
               onClick={() => onNavigate && onNavigate('issues')}
-              className="px-4 py-2 bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer active:scale-95"
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer active:scale-95"
             >
               Circulation Desk
             </button>

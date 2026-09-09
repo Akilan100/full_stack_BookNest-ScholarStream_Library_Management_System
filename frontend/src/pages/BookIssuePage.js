@@ -25,6 +25,7 @@ function BookIssuePage({ books = [], onDataChange }) {
   const issueRecordsState = useSelector((s) => s.issueRecords) || { list: [] };
   const records = Array.isArray(issueRecordsState) ? issueRecordsState : issueRecordsState.list || [];
 
+  const [loading, setLoading] = useState(false);
   const [filterState, setFilterState] = useState('ALL');
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [patrons, setPatrons] = useState([]);
@@ -46,6 +47,7 @@ function BookIssuePage({ books = [], onDataChange }) {
     if (isStaffOrAdmin) {
       fetchPatrons();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth.token, auth.role]);
 
   const fetchRecords = async () => {
@@ -401,9 +403,10 @@ function BookIssuePage({ books = [], onDataChange }) {
               <div className="flex gap-2.5 pt-3 border-t border-slate-100">
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-sm"
+                  disabled={loading}
+                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-sm disabled:opacity-50"
                 >
-                  Confirm Book Check-out
+                  {loading ? 'Processing...' : 'Confirm Book Check-out'}
                 </button>
                 <button
                   type="button"

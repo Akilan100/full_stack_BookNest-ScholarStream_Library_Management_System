@@ -21,6 +21,7 @@ function FinePaymentPage({ onDataChange }) {
   const finesState = useSelector((s) => s.fines) || { list: [] };
   const fines = Array.isArray(finesState) ? finesState : finesState.list || [];
 
+  const [loading, setLoading] = useState(false);
   const [showFineModal, setShowFineModal] = useState(false);
   const [issues, setIssues] = useState([]);
   const [patrons, setPatrons] = useState([]);
@@ -43,6 +44,7 @@ function FinePaymentPage({ onDataChange }) {
     if (isStaffOrAdmin) {
       fetchAuxData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth.token, auth.role]);
 
   const fetchFines = async () => {
@@ -346,9 +348,10 @@ function FinePaymentPage({ onDataChange }) {
               <div className="flex gap-2.5 pt-3 border-t border-slate-100">
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-sm"
+                  disabled={loading}
+                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-sm disabled:opacity-50"
                 >
-                  Create Fine
+                  {loading ? 'Processing...' : 'Create Fine'}
                 </button>
                 <button
                   type="button"

@@ -29,6 +29,7 @@ function BookHoldPage({ books = [], onDataChange }) {
   const holdsState = useSelector((s) => s.holds) || { list: [] };
   const holds = Array.isArray(holdsState) ? holdsState : holdsState.list || [];
 
+  const [loading, setLoading] = useState(false);
   const [showHoldModal, setShowHoldModal] = useState(false);
   const [patrons, setPatrons] = useState([]);
 
@@ -48,6 +49,7 @@ function BookHoldPage({ books = [], onDataChange }) {
     if (isStaffOrAdmin) {
       fetchPatrons();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth.token, auth.role]);
 
   const fetchHolds = async () => {
@@ -367,9 +369,10 @@ function BookHoldPage({ books = [], onDataChange }) {
               <div className="flex gap-2.5 pt-3 border-t border-slate-100">
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-sm"
+                  disabled={loading}
+                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-sm disabled:opacity-50"
                 >
-                  Confirm Hold Reservation
+                  {loading ? 'Processing...' : 'Confirm Hold Reservation'}
                 </button>
                 <button
                   type="button"

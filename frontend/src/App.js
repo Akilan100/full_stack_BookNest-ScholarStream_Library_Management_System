@@ -64,6 +64,7 @@ function App() {
     } else {
       delete axios.defaults.headers.common['Authorization'];
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth.token]);
 
   const fetchCatalogue = async () => {
