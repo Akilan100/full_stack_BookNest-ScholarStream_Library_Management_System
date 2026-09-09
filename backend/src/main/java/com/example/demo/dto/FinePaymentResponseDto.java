@@ -37,9 +37,15 @@ public class FinePaymentResponseDto {
     public BigDecimal getAmount() { return amount; }
     public void setAmount(BigDecimal amount) { this.amount = amount; }
 
+    public BigDecimal getFineAmount() { return amount; }
+    public void setFineAmount(BigDecimal fineAmount) { this.amount = fineAmount; }
+
     public LocalDateTime getPaymentDate() { return paymentDate; }
     public void setPaymentDate(LocalDateTime paymentDate) { this.paymentDate = paymentDate; }
 
     public PaymentStatus getPaymentStatus() { return paymentStatus; }
     public void setPaymentStatus(PaymentStatus paymentStatus) { this.paymentStatus = paymentStatus; }
+
+    public PaymentStatus getStatus() { return paymentStatus; }
+    public void setStatus(PaymentStatus status) { this.paymentStatus = status; }
 }

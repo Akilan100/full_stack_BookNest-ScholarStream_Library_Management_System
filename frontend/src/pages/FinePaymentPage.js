@@ -18,8 +18,8 @@ export const waiveFine = async (id) => {
 function FinePaymentPage({ onDataChange }) {
   const dispatch = useDispatch();
   const auth = useSelector((s) => s.auth);
-  const finesState = useSelector((s) => s.fines) || { list: [] };
-  const fines = Array.isArray(finesState) ? finesState : finesState.list || [];
+  const finesState = useSelector((s) => s.finePayment || s.fines) || { fines: [] };
+  const fines = Array.isArray(finesState) ? finesState : (finesState.fines || finesState.list || []);
 
   const [loading, setLoading] = useState(false);
   const [showFineModal, setShowFineModal] = useState(false);

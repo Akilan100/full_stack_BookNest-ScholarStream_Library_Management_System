@@ -26,8 +26,8 @@ export const deleteHold = async (id) => {
 function BookHoldPage({ books = [], onDataChange }) {
   const dispatch = useDispatch();
   const auth = useSelector((s) => s.auth);
-  const holdsState = useSelector((s) => s.holds) || { list: [] };
-  const holds = Array.isArray(holdsState) ? holdsState : holdsState.list || [];
+  const holdsState = useSelector((s) => s.bookHoldRequest || s.holds) || { holds: [] };
+  const holds = Array.isArray(holdsState) ? holdsState : (holdsState.holds || holdsState.list || []);
 
   const [loading, setLoading] = useState(false);
   const [showHoldModal, setShowHoldModal] = useState(false);

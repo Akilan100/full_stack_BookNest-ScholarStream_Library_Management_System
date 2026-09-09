@@ -22,8 +22,8 @@ export const deleteIssueRecord = async (id) => {
 function BookIssuePage({ books = [], onDataChange }) {
   const dispatch = useDispatch();
   const auth = useSelector((s) => s.auth);
-  const issueRecordsState = useSelector((s) => s.issueRecords) || { list: [] };
-  const records = Array.isArray(issueRecordsState) ? issueRecordsState : issueRecordsState.list || [];
+  const issueRecordsState = useSelector((s) => s.bookIssueRecord || s.issueRecords) || { records: [] };
+  const records = Array.isArray(issueRecordsState) ? issueRecordsState : (issueRecordsState.records || issueRecordsState.list || []);
 
   const [loading, setLoading] = useState(false);
   const [filterState, setFilterState] = useState('ALL');

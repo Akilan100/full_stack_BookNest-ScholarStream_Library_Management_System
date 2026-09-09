@@ -39,7 +39,7 @@ public class FinePaymentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(finePaymentService.createFine(dto));
     }
 
-    @PreAuthorize("hasRole('LIBRARY_PATRON')")
+    @PreAuthorize("hasAnyRole('LIBRARY_PATRON','LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")
     @PutMapping("/{id}/pay")
     public ResponseEntity<FinePaymentResponseDto> payFine(@PathVariable Long id) {
         return ResponseEntity.ok(finePaymentService.payFine(id));
