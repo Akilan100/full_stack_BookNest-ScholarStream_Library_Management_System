@@ -76,6 +76,16 @@ public class BookHoldService {
     }
 
     @Transactional
+    public BookHoldResponseDto adminCancelHold(Long id) {
+        BookHoldRequest hold = findById(id);
+        if (hold.getStatus() == HoldStatus.FULFILLED || hold.getStatus() == HoldStatus.CANCELLED) {
+            throw new BusinessValidationException("Hold cannot be cancelled in status: " + hold.getStatus());
+        }
+        hold.setStatus(HoldStatus.CANCELLED);
+        return BookHoldMapper.toDto(holdRepository.save(hold));
+    }
+
+    @Transactional
     public BookHoldResponseDto markReadyForPickup(Long id) {
         BookHoldRequest hold = findById(id);
         if (hold.getStatus() != HoldStatus.PENDING) {

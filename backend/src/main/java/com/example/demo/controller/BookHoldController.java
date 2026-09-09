@@ -5,7 +5,6 @@ import com.example.demo.dto.BookHoldResponseDto;
 import com.example.demo.dto.BookIssueResponseDto;
 import com.example.demo.entity.User;
 import com.example.demo.service.BookHoldService;
-import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/book-holds")
+@RequestMapping({"/api/book-holds", "/api/holds"})
 public class BookHoldController {
 
     private final BookHoldService bookHoldService;
@@ -44,6 +43,9 @@ public class BookHoldController {
         if ("LIBRARY_PATRON".equals(currentUser.getRole()) || dto.getLibraryAccountId() == null) {
             dto.setLibraryAccountId(currentUser.getId());
         }
+        if (dto.getLibraryBookId() == null && dto.getBookId() != null) {
+            dto.setLibraryBookId(dto.getBookId());
+        }
         if (dto.getLibraryBookId() == null) {
             throw new com.example.demo.exception.BusinessValidationException("libraryBookId must not be null");
         }
@@ -51,7 +53,7 @@ public class BookHoldController {
     }
 
     @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")
-    @PutMapping("/{id}/pickup")
+    @PutMapping({"/{id}/pickup", "/{id}/ready"})
     public ResponseEntity<BookHoldResponseDto> markReadyForPickup(@PathVariable Long id) {
         return ResponseEntity.ok(bookHoldService.markReadyForPickup(id));
     }
@@ -68,6 +70,13 @@ public class BookHoldController {
     public ResponseEntity<BookHoldResponseDto> cancelHold(@PathVariable Long id,
                                                            @AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(bookHoldService.cancelHold(id, currentUser.getId()));
+    }
+
+    // STAFF / ADMIN — cancel any hold
+    @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")
+    @PutMapping("/{id}/admin-cancel")
+    public ResponseEntity<BookHoldResponseDto> adminCancelHold(@PathVariable Long id) {
+        return ResponseEntity.ok(bookHoldService.adminCancelHold(id));
     }
 
     @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")

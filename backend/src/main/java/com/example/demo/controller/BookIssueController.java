@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/book-issues")
+@RequestMapping({"/api/book-issues", "/api/issues"})
 public class BookIssueController {
 
     private final BookIssueService bookIssueService;
@@ -45,6 +45,12 @@ public class BookIssueController {
     @PreAuthorize("hasAnyRole('LIBRARIAN_STAFF','CHIEF_LIBRARIAN')")
     @PostMapping
     public ResponseEntity<BookIssueResponseDto> issueBook(@Valid @RequestBody BookIssueRequestDto dto) {
+        if (dto.getLibraryBookId() == null && dto.getBookId() != null) {
+            dto.setLibraryBookId(dto.getBookId());
+        }
+        if (dto.getLibraryAccountId() == null && dto.getUserId() != null) {
+            dto.setLibraryAccountId(dto.getUserId());
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(bookIssueService.issueBook(dto));
     }
 

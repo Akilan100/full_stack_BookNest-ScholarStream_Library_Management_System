@@ -82,9 +82,12 @@ function BookHoldPage({ books = [], onDataChange }) {
     }
 
     try {
+      const targetAccountId = auth.accountId || (auth.user && auth.user.id) || auth.id || 3;
       const payload = {
         bookId: Number(holdForm.bookId),
-        userId: Number(holdForm.userId || (patrons[0]?.id || 5)),
+        libraryBookId: Number(holdForm.bookId),
+        userId: Number(targetAccountId),
+        libraryAccountId: Number(targetAccountId),
       };
       await placeHold(payload);
       setShowHoldModal(false);
@@ -334,35 +337,8 @@ function BookHoldPage({ books = [], onDataChange }) {
                     </option>
                   ))}
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Patron Account ID *
-                </label>
-                {patrons.length > 0 ? (
-                  <select
-                    value={holdForm.userId}
-                    onChange={(e) => setHoldForm({ ...holdForm, userId: e.target.value })}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer"
-                  >
-                    {patrons.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.fullName || p.username} ({p.email}) — ID: #{p.id}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type="number"
-                    placeholder="Enter numerical Patron ID (e.g. 5)"
-                    value={holdForm.userId}
-                    onChange={(e) => setHoldForm({ ...holdForm, userId: e.target.value })}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  />
-                )}
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Reserving under verified patron identity queue position
+                  Reserving under verified patron queue position
                 </p>
               </div>
 
