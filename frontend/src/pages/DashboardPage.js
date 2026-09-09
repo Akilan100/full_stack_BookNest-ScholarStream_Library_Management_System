@@ -15,8 +15,15 @@ function DashboardPage({ onNavigate, books = [], issueRecords = [], holds = [], 
   const totalCirculations = activeIssuedCount + returnedCount + overdueCount + lostCount;
   const safeTotal = Math.max(1, totalCirculations);
 
-  const pendingFines = fines.filter((f) => f.status === 'PENDING');
-  const totalPenaltyAmount = pendingFines.reduce((acc, f) => acc + Number(f.fineAmount || 0), 0);
+  const getFineAmount = (f) => Number(f.fineAmount !== undefined && f.fineAmount !== null ? f.fineAmount : (f.amount || 0));
+  const getFineStatus = (f) => String(f.status || f.paymentStatus || 'PENDING').toUpperCase();
+
+  const pendingFines = fines.filter((f) => getFineStatus(f) === 'PENDING');
+  const paidFines = fines.filter((f) => getFineStatus(f) === 'PAID');
+
+  const totalCollectedAmount = paidFines.reduce((acc, f) => acc + getFineAmount(f), 0);
+  const totalPendingAmount = pendingFines.reduce((acc, f) => acc + getFineAmount(f), 0);
+  const totalPenaltyAmount = fines.reduce((acc, f) => acc + getFineAmount(f), 0);
 
   // Donut SVG Calculation
   const radius = 40;
@@ -76,6 +83,20 @@ function DashboardPage({ onNavigate, books = [], issueRecords = [], holds = [], 
         badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
       });
     }
+  });
+
+  // Recent fine penalty & payment events
+  fines.slice(0, 3).forEach((f) => {
+    const status = getFineStatus(f);
+    const amt = getFineAmount(f).toFixed(2);
+    recentActivities.push({
+      id: `fine-${f.id}`,
+      type: status === 'PAID' ? 'FINE_PAID' : 'PENALTY',
+      title: `${status === 'PAID' ? 'Fine Collected' : 'Penalty Assessed'}: $${amt}`,
+      desc: `${f.bookTitle || 'Circulation Record'} — ${f.userEmail || f.accountEmail || 'Patron'} (${status})`,
+      date: f.paymentDate || f.assessmentDate || new Date().toISOString().split('T')[0],
+      badgeColor: status === 'PAID' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200',
+    });
   });
 
   return (
@@ -172,8 +193,12 @@ function DashboardPage({ onNavigate, books = [], issueRecords = [], holds = [], 
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-2xl font-black tracking-tight text-amber-600">${totalPenaltyAmount.toFixed(2)}</div>
-            <div className="text-xs font-medium text-slate-500 mt-0.5">Overdue Item Penalty Fees</div>
+            <div className="text-2xl font-black tracking-tight text-amber-600">
+              ${totalPenaltyAmount.toFixed(2)}
+            </div>
+            <div className="text-xs font-medium text-slate-500 mt-0.5">
+              ${totalCollectedAmount.toFixed(2)} Collected · ${totalPendingAmount.toFixed(2)} Pending
+            </div>
           </div>
         </div>
       </div>

@@ -56,16 +56,26 @@ function App() {
   const isPatron = auth.role === 'LIBRARY_PATRON';
   const isStaffOrAdmin = auth.role === 'CHIEF_LIBRARIAN' || auth.role === 'LIBRARIAN_STAFF' || auth.role === 'ROLE_ADMIN' || auth.role === 'ADMIN';
 
-  // Configure axios token
+  // Configure axios token and load data
   useEffect(() => {
     if (auth.token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${auth.token}`;
       fetchCatalogue();
+      fetchAuxiliaryData();
     } else {
       delete axios.defaults.headers.common['Authorization'];
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth.token]);
+
+  // Refresh telemetry on tab change
+  useEffect(() => {
+    if (auth.token && activeTab === 'home') {
+      fetchCatalogue();
+      fetchAuxiliaryData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   const fetchCatalogue = async () => {
     try {
