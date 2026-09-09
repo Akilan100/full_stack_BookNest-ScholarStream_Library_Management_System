@@ -4,16 +4,16 @@ import axios from 'axios';
 import { setRecords } from '../store/slices/bookIssueRecordSlice';
 import { bookIssueService } from '../services/bookIssueService';
 
-const STATUS_COLORS = {
-  ISSUED: 'bg-blue-100 text-blue-700',
-  RETURNED: 'bg-green-100 text-green-700',
-  OVERDUE: 'bg-red-100 text-red-700',
-  LOST: 'bg-gray-100 text-gray-700',
+const STATUS_BADGES = {
+  ISSUED: 'bg-blue-100 text-blue-800 border-blue-200',
+  RETURNED: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  OVERDUE: 'bg-rose-100 text-rose-800 border-rose-200',
+  LOST: 'bg-slate-100 text-slate-700 border-slate-300',
 };
 
 function BookIssuePage({ users: propUsers, books: propBooks }) {
   const dispatch = useDispatch();
-  const { records, loading } = useSelector(s => s.bookIssueRecord);
+  const { records } = useSelector(s => s.bookIssueRecord);
   const auth = useSelector(s => s.auth);
   const isStaff = ['LIBRARIAN_STAFF', 'CHIEF_LIBRARIAN'].includes(auth.role);
   const isPatron = auth.role === 'LIBRARY_PATRON';
@@ -24,6 +24,7 @@ function BookIssuePage({ users: propUsers, books: propBooks }) {
   const [formBookId, setFormBookId] = useState('');
   const [formUserId, setFormUserId] = useState('');
   const [formDueDate, setFormDueDate] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [toast, setToast] = useState('');
   const [error, setError] = useState('');
 
@@ -62,7 +63,7 @@ function BookIssuePage({ users: propUsers, books: propBooks }) {
     try {
       await bookIssueService.issueBook({
         libraryBookId: Number(formBookId),
-        libraryAccountId: Number(formUserId),
+        libraryAccountId: Number(formUserId || auth.accountId),
         dueDate: formDueDate ? formDueDate + ':00' : undefined,
       });
       setShowForm(false);
@@ -106,134 +107,243 @@ function BookIssuePage({ users: propUsers, books: propBooks }) {
     }
   };
 
+  const filteredRecords = (records || []).filter(r => {
+    if (statusFilter === 'ALL') return true;
+    return r.status === statusFilter;
+  });
+
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
       {toast && (
-        <div className="fixed top-4 right-4 bg-emerald-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 text-sm font-medium">{toast}</div>
-      )}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-bold text-slate-800">
-            {isPatron ? 'My Issued Books & Lending History' : 'Circulation & Book Issues'}
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            {isPatron ? 'Track your active checkouts and due dates' : 'Manage active book checkouts, returns, and inventory status'}
-          </p>
+        <div className="fixed top-4 right-4 bg-emerald-600 text-white px-5 py-2.5 rounded-xl shadow-xl z-50 text-sm font-semibold flex items-center gap-2">
+          <span>✓</span>
+          <span>{toast}</span>
         </div>
-        {isStaff && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition shadow-sm"
-          >
-            + Issue Book
-          </button>
-        )}
+      )}
+
+      {/* Header & Controls Toolbar (SRS Page 30 Bottom) */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-slate-800 tracking-tight">
+              {isPatron ? 'My Issued Books & Lending History' : 'Circulation Desk Checkouts'}
+            </h1>
+            <p className="text-xs text-slate-500 mt-1">
+              {isPatron ? 'Track your active checkouts, loan terms, and due dates' : 'Manage active book checkouts, returns, inventory status, and circulation tracking'}
+            </p>
+          </div>
+
+          {isStaff && (
+            <button
+              onClick={() => setShowForm(true)}
+              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-sm transition flex items-center gap-2 shrink-0"
+            >
+              <span>+ Issue Book to Patron</span>
+            </button>
+          )}
+        </div>
+
+        {/* Filter Controls Row */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mt-6 pt-6 border-t border-slate-100">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-600">Filter tracking logs by lifecycle state:</span>
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-medium text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="ALL">All States</option>
+              <option value="ISSUED">ISSUED (Active Out)</option>
+              <option value="RETURNED">RETURNED</option>
+              <option value="OVERDUE">OVERDUE</option>
+              <option value="LOST">LOST</option>
+            </select>
+          </div>
+
+          {statusFilter !== 'ALL' && (
+            <button
+              onClick={() => setStatusFilter('ALL')}
+              className="text-xs text-blue-600 hover:text-blue-700 font-semibold"
+            >
+              Reset Filters
+            </button>
+          )}
+        </div>
       </div>
 
+      {/* Main Circulation Table (SRS Page 30 Table Columns) */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-50/80 border-b border-slate-200/80 text-slate-600 text-xs uppercase font-bold tracking-wider">
+              <tr>
+                <th className="px-5 py-3.5">Tracking ID</th>
+                <th className="px-5 py-3.5">Volume Title</th>
+                <th className="px-5 py-3.5">Borrower Account</th>
+                <th className="px-5 py-3.5">Checkout Timestamp</th>
+                <th className="px-5 py-3.5">Target Due Date</th>
+                <th className="px-5 py-3.5">Lifecycle Status</th>
+                <th className="px-5 py-3.5">Fine Balance</th>
+                <th className="px-5 py-3.5 text-right">Desk Operations</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-700">
+              {filteredRecords.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-5 py-8 text-center text-sm text-slate-400">
+                    No circulation checkouts match current criteria.
+                  </td>
+                </tr>
+              ) : (
+                filteredRecords.map(rec => (
+                  <tr key={rec.id} className="hover:bg-slate-50/80 transition">
+                    <td className="px-5 py-3.5 font-mono text-xs font-bold text-slate-500">#{rec.id}</td>
+                    <td className="px-5 py-3.5 font-bold text-slate-800">{rec.bookTitle || `Volume #${rec.libraryBookId}`}</td>
+                    <td className="px-5 py-3.5">
+                      <div className="text-xs font-bold text-slate-800">{rec.accountFullName || 'Patron User'}</div>
+                      <div className="text-[11px] text-slate-400">{rec.accountEmail || `Account #${rec.libraryAccountId}`}</div>
+                    </td>
+                    <td className="px-5 py-3.5 text-xs text-slate-600">
+                      {rec.issueDate ? new Date(rec.issueDate).toLocaleDateString() : 'N/A'}
+                    </td>
+                    <td className="px-5 py-3.5 text-xs text-slate-600">
+                      {rec.dueDate ? new Date(rec.dueDate).toLocaleDateString() : 'N/A'}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className={`inline-block px-2.5 py-1 rounded-md text-[11px] font-bold border ${STATUS_BADGES[rec.status] || 'bg-slate-100 text-slate-700'}`}>
+                        {rec.status}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 font-mono text-xs font-bold text-slate-700">
+                      ${Number(rec.fineAmount || 0).toFixed(2)}
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                        {rec.status === 'ISSUED' && (
+                          <button
+                            onClick={() => handleReturn(rec.id)}
+                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition shadow-xs"
+                          >
+                            Return
+                          </button>
+                        )}
+                        {isStaff && rec.status === 'ISSUED' && (
+                          <button
+                            onClick={() => handleLost(rec.id)}
+                            className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold transition"
+                          >
+                            Lost
+                          </button>
+                        )}
+                        {isStaff && (
+                          <button
+                            onClick={() => handleDelete(rec.id)}
+                            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Issue Book Modal (SRS Page 31 Top Modal) */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40 p-4">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-bold text-slate-800 mb-4">Issue Book to Patron</h3>
-            {error && <div className="mb-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}
-            <form onSubmit={handleIssue} className="space-y-3">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 p-4" role="dialog">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md border border-slate-100">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+              <h3 className="text-lg font-bold text-slate-800">Issue Book at Circulation Desk</h3>
+              <button
+                onClick={() => { setShowForm(false); setError(''); }}
+                className="text-slate-400 hover:text-slate-600 text-lg font-bold w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 transition"
+              >
+                ×
+              </button>
+            </div>
+
+            {error && (
+              <div className="mb-4 px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleIssue} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Book Volume</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Target Library Book Volume <span className="text-rose-500">*</span>
+                </label>
                 <select
                   value={formBookId}
                   onChange={e => setFormBookId(e.target.value)}
                   required
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">Select a book...</option>
-                  {(books || []).map(b => (
-                    <option key={b.id} value={b.id} disabled={b.availableCopies <= 0}>
-                      {b.title} ({b.availableCopies} available)
+                  <option value="">Select a book volume...</option>
+                  {books.map(b => (
+                    <option key={b.id} value={b.id}>
+                      {b.title} ({b.availableCopies}/{b.totalCopies} available) - ISBN: {b.isbn}
                     </option>
                   ))}
                 </select>
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Patron Account</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Borrowing Patron Account ID <span className="text-rose-500">*</span>
+                </label>
                 <select
                   value={formUserId}
                   onChange={e => setFormUserId(e.target.value)}
                   required
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">Select a patron...</option>
-                  {(users || []).map(u => (
-                    <option key={u.id} value={u.id}>{u.fullName} ({u.email}) [{u.role}]</option>
+                  <option value="">Select a patron account...</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>
+                      #{u.id} — {u.fullName} ({u.email}) [{u.role}]
+                    </option>
                   ))}
                 </select>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Must reference an active unsuspended patron ledger tracking profile
+                </p>
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Due Date (Optional — defaults to 14 days)</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Target Due Date (Optional)
+                </label>
                 <input
                   type="datetime-local"
                   value={formDueDate}
                   onChange={e => setFormDueDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <div className="flex gap-2 pt-2">
-                <button type="submit" className="flex-1 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition">Issue Volume</button>
-                <button type="button" onClick={() => { setShowForm(false); setError(''); }} className="flex-1 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition">Cancel</button>
+
+              <div className="flex gap-2.5 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition"
+                >
+                  Confirm Book Check-out
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition"
+                >
+                  Cancel
+                </button>
               </div>
             </form>
           </div>
-        </div>
-      )}
-
-      {loading ? (
-        <div className="flex justify-center py-12"><div className="animate-spin w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full" /></div>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-600 text-left border-b border-slate-200">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Book Title</th>
-                <th className="px-4 py-3 font-semibold">Patron</th>
-                <th className="px-4 py-3 font-semibold">Issue Date</th>
-                <th className="px-4 py-3 font-semibold">Due Date</th>
-                <th className="px-4 py-3 font-semibold">Status</th>
-                <th className="px-4 py-3 font-semibold">Fine Amount</th>
-                {isStaff && <th className="px-4 py-3 font-semibold text-right">Actions</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {(!records || records.length === 0) && (
-                <tr><td colSpan={isStaff ? 7 : 6} className="px-4 py-10 text-center text-slate-400">No active or historical lending records found.</td></tr>
-              )}
-              {(records || []).map(r => (
-                <tr key={r.id} className="hover:bg-slate-50 transition">
-                  <td className="px-4 py-3 font-medium text-slate-800">{r.bookTitle}</td>
-                  <td className="px-4 py-3 text-slate-600">
-                    <div>{r.accountFullName}</div>
-                    <div className="text-xs text-slate-400">{r.accountEmail}</div>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">{r.issueDate ? new Date(r.issueDate).toLocaleDateString() : '-'}</td>
-                  <td className="px-4 py-3 text-slate-600">{r.dueDate ? new Date(r.dueDate).toLocaleDateString() : '-'}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${STATUS_COLORS[r.status] || 'bg-slate-100 text-slate-600'}`}>{r.status}</span>
-                  </td>
-                  <td className="px-4 py-3 text-slate-700 font-medium">{r.fineAmount > 0 ? `$${Number(r.fineAmount).toFixed(2)}` : '$0.00'}</td>
-                  {isStaff && (
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex gap-1.5 justify-end flex-wrap">
-                        {r.status === 'ISSUED' && (
-                          <>
-                            <button onClick={() => handleReturn(r.id)} className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md text-xs font-medium hover:bg-emerald-100 transition">Return</button>
-                            <button onClick={() => handleLost(r.id)} className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-md text-xs font-medium hover:bg-amber-100 transition">Lost</button>
-                          </>
-                        )}
-                        <button onClick={() => handleDelete(r.id)} className="px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded-md text-xs font-medium hover:bg-rose-100 transition">Delete</button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       )}
     </div>
@@ -241,3 +351,4 @@ function BookIssuePage({ users: propUsers, books: propBooks }) {
 }
 
 export default BookIssuePage;
+export { BookIssuePage };
