@@ -237,42 +237,45 @@ function App() {
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col selection:bg-blue-600 selection:text-white">
       {/* Top Navigation Bar */}
-      <header className="bg-slate-950 text-white border-b border-slate-800 sticky top-0 z-40 shadow-md">
+      {/* Top Navigation Bar (Clean White Theme) */}
+      <header className="bg-white text-slate-800 border-b border-slate-200 sticky top-0 z-40 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo and App Title */}
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-xl flex items-center justify-center shadow-md shadow-blue-500/20 border border-white/10">
+              <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-sm">
                 <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
               </div>
               <div className="flex flex-col">
-                <span className="font-bold text-base tracking-tight text-white flex items-center gap-1.5 leading-tight">
-                  BookNest <span className="text-[10px] font-semibold px-1.5 py-0.2 bg-blue-500/20 text-blue-300 rounded border border-blue-400/20">ScholarStream</span>
+                <span className="font-bold text-base tracking-tight text-slate-900 flex items-center gap-1.5 leading-tight">
+                  BookNest <span className="text-[10px] font-semibold px-2 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">ScholarStream</span>
                 </span>
-                <span className="text-[10px] text-slate-400">Integrated Library Management</span>
+                <span className="text-[10px] text-slate-500">Integrated Library Management</span>
               </div>
             </div>
 
             {/* Navigation Tabs */}
             <nav className="hidden md:flex items-center space-x-1">
-              <button
-                onClick={() => setActiveTab('home')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
-                  activeTab === 'home'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-850'
-                }`}
-              >
-                <span>📊</span> Home
-              </button>
+              {isStaffOrAdmin && (
+                <button
+                  onClick={() => setActiveTab('home')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                    activeTab === 'home'
+                      ? 'bg-blue-50 text-blue-700 border border-blue-200 font-bold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>📊</span> Home
+                </button>
+              )}
               <button
                 onClick={() => setActiveTab('catalogue')}
                 className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
                   activeTab === 'catalogue'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-850'
+                    ? 'bg-blue-50 text-blue-700 border border-blue-200 font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
                 <span>📚</span> Catalogue
@@ -281,8 +284,8 @@ function App() {
                 onClick={() => setActiveTab('issues')}
                 className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
                   activeTab === 'issues'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-850'
+                    ? 'bg-blue-50 text-blue-700 border border-blue-200 font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
                 <span>🔄</span> Lending
@@ -291,8 +294,8 @@ function App() {
                 onClick={() => setActiveTab('holds')}
                 className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
                   activeTab === 'holds'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-850'
+                    ? 'bg-blue-50 text-blue-700 border border-blue-200 font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
                 <span>⏳</span> Holds
@@ -301,8 +304,8 @@ function App() {
                 onClick={() => setActiveTab('fines')}
                 className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
                   activeTab === 'fines'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-850'
+                    ? 'bg-blue-50 text-blue-700 border border-blue-200 font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
                 <span>💳</span> Fines
@@ -312,20 +315,20 @@ function App() {
             {/* User Profile & Actions */}
             <div className="flex items-center gap-3">
               <div className="hidden sm:flex flex-col text-right">
-                <span className="text-xs font-semibold text-white">
+                <span className="text-xs font-semibold text-slate-800">
                   Welcome back! {auth.fullName || auth.user?.fullName || 'Chief Librarian'}
                 </span>
-                <span className="text-[10px] text-blue-400 font-mono font-medium">
+                <span className="text-[10px] text-blue-600 font-mono font-medium">
                   {auth.role || 'CHIEF_LIBRARIAN'}
                 </span>
               </div>
 
               <button
                 onClick={handleLogout}
-                className="px-3 py-1.5 bg-slate-850 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-700/80 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
                 title="Sign out of the system"
               >
-                <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
                 Logout
@@ -359,7 +362,7 @@ function App() {
         )}
 
         {/* Tab Routing */}
-        {activeTab === 'home' && (
+        {isStaffOrAdmin && activeTab === 'home' && (
           <DashboardPage
             onNavigate={(tab) => setActiveTab(tab)}
             books={books}
