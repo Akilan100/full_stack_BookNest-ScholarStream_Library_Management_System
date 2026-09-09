@@ -434,8 +434,20 @@ function DashboardPage({ onNavigate, books = [], issueRecords = [], holds = [], 
                   className="p-3.5 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-200/70 transition flex items-start justify-between gap-3"
                 >
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-700 shadow-2xs mt-0.5 flex-shrink-0">
-                      {act.type === 'HOLD' ? '📌' : act.type === 'CHECKOUT' ? '📤' : '📥'}
+                    <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600 shadow-2xs mt-0.5 flex-shrink-0">
+                      {act.type === 'HOLD' ? (
+                        <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                        </svg>
+                      ) : act.type === 'CHECKOUT' ? (
+                        <svg className="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8l-8-8-8 8" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 20V4m-8 8l8 8 8-8" />
+                        </svg>
+                      )}
                     </div>
                     <div>
                       <div className="text-xs font-bold text-slate-900">{act.title}</div>

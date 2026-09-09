@@ -267,7 +267,7 @@ function App() {
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
-                  <span>📊</span> Home
+                  Home
                 </button>
               )}
               <button
@@ -278,7 +278,7 @@ function App() {
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
-                <span>📚</span> Catalogue
+                Catalogue
               </button>
               <button
                 onClick={() => setActiveTab('issues')}
@@ -288,7 +288,7 @@ function App() {
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
-                <span>🔄</span> Lending
+                Lending
               </button>
               <button
                 onClick={() => setActiveTab('holds')}
@@ -298,7 +298,7 @@ function App() {
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
-                <span>⏳</span> Holds
+                Holds
               </button>
               <button
                 onClick={() => setActiveTab('fines')}
@@ -308,7 +308,7 @@ function App() {
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
-                <span>💳</span> Fines
+                Fines
               </button>
             </nav>
 
