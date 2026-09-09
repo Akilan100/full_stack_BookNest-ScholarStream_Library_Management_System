@@ -43,6 +43,7 @@ function LoginPage({ onLoginSuccess }) {
     } else {
       try {
         const payload = {
+          email: formData.email.trim(),
           username: formData.email.trim(),
           password: formData.password,
         };
