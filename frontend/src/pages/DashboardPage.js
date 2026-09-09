@@ -1,269 +1,287 @@
 import React from 'react';
 
 function DashboardPage({ onNavigate, books = [], issueRecords = [], holds = [], fines = [] }) {
-  // Compute metrics from actual data
-  const totalCatalogued = books.length || 100;
-  const totalAvailable = books.reduce((acc, b) => acc + (b.availableCopies ?? 0), 0) || totalCatalogued;
-  const activeIssuesCount = issueRecords.filter(r => r.status === 'ISSUED').length;
+  // Compute metrics from actual live state
+  const totalBooks = books.length;
+  const totalAvailableCopies = books.reduce((acc, b) => acc + (b.availableCopies !== undefined ? b.availableCopies : b.totalCopies || 0), 0);
+  const activeIssuedCount = issueRecords.filter(r => r.status === 'ISSUED').length;
   const returnedCount = issueRecords.filter(r => r.status === 'RETURNED').length;
   const overdueCount = issueRecords.filter(r => r.status === 'OVERDUE').length;
   const lostCount = issueRecords.filter(r => r.status === 'LOST').length;
+  
+  const pendingFines = fines.filter(f => f.status === 'PENDING');
+  const totalPenaltyAmount = pendingFines.reduce((acc, f) => acc + Number(f.fineAmount || 0), 0);
 
-  const totalPendingFines = fines
-    .filter(f => f.paymentStatus === 'PENDING')
-    .reduce((sum, f) => sum + Number(f.amount || 0), 0);
-
-  // Recent desk operations feed
+  // Generate real desk activity stream
   const recentActivities = [];
 
+  // Recent holds
   holds.slice(0, 3).forEach(h => {
     recentActivities.push({
-      type: 'hold',
-      icon: '📌',
-      title: `Line Placement: "${h.bookTitle || 'Library Volume'}"`,
-      desc: `Reserved by ${h.accountEmail || 'patron'} — State: ${h.status || 'PENDING'}`,
-      timestamp: h.requestDate ? new Date(h.requestDate).toLocaleDateString() : 'Recent',
-      tagColor: h.status === 'READY_FOR_PICKUP' ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700',
-      tag: h.status || 'PENDING'
+      id: `hold-${h.id}`,
+      type: 'HOLD',
+      icon: 'bookmark',
+      title: `Line Placement: "${h.bookTitle || (h.book && h.book.title) || 'Catalog Volume'}"`,
+      desc: `Reserved by ${h.patronEmail || 'Patron'} — State: ${h.status}`,
+      date: h.requestDate || new Date().toISOString().split('T')[0],
+      badgeColor: h.status === 'READY_FOR_PICKUP' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'
     });
   });
 
-  issueRecords.slice(0, 4).forEach(i => {
-    recentActivities.push({
-      type: i.status === 'RETURNED' ? 'checkin' : 'checkout',
-      icon: i.status === 'RETURNED' ? '📥' : '📤',
-      title: i.status === 'RETURNED' ? `Volume Check-in: "${i.bookTitle || 'Library Volume'}"` : `Volume Check-out: "${i.bookTitle || 'Library Volume'}"`,
-      desc: i.status === 'RETURNED' ? `Returned by ${i.accountEmail || 'patron'}` : `Issued to ${i.accountEmail || 'patron'} — Due: ${i.dueDate ? new Date(i.dueDate).toLocaleDateString() : 'Standard'}`,
-      timestamp: i.issueDate ? new Date(i.issueDate).toLocaleDateString() : 'Recent',
-      tagColor: i.status === 'RETURNED' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700',
-      tag: i.status || 'ISSUED'
-    });
+  // Recent circulations
+  issueRecords.slice(0, 3).forEach(r => {
+    if (r.status === 'ISSUED') {
+      recentActivities.push({
+        id: `issue-${r.id}`,
+        type: 'CHECKOUT',
+        icon: 'arrow-up',
+        title: `Volume Check-out: "${r.bookTitle || (r.book && r.book.title) || 'Catalog Volume'}"`,
+        desc: `Issued to ${r.userEmail || 'Borrower'} — Target Due: ${r.dueDate || 'Standard Term'}`,
+        date: r.issueDate || new Date().toISOString().split('T')[0],
+        badgeColor: 'bg-blue-50 text-blue-700 border-blue-200'
+      });
+    } else if (r.status === 'RETURNED') {
+      recentActivities.push({
+        id: `ret-${r.id}`,
+        type: 'RETURN',
+        icon: 'arrow-down',
+        title: `Volume Check-in: "${r.bookTitle || (r.book && r.book.title) || 'Catalog Volume'}"`,
+        desc: `Returned by ${r.userEmail || 'Borrower'} — Shelf re-stocked`,
+        date: r.returnDate || r.issueDate || new Date().toISOString().split('T')[0],
+        badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+      });
+    }
   });
-
-  if (recentActivities.length === 0) {
-    recentActivities.push(
-      {
-        icon: '📌',
-        title: 'Line Placement: "The C Programming Language"',
-        desc: 'Reserved by patron@booknest.com — State: READY_FOR_PICKUP',
-        timestamp: '5/15/2026',
-        tagColor: 'bg-indigo-100 text-indigo-700',
-        tag: 'READY_FOR_PICKUP'
-      },
-      {
-        icon: '📤',
-        title: 'Volume Check-out: "The C Programming Language"',
-        desc: 'Issued to admin@booknest.com — Due: 5/29/2026',
-        timestamp: '5/15/2026',
-        tagColor: 'bg-blue-100 text-blue-700',
-        tag: 'ISSUED'
-      },
-      {
-        icon: '📤',
-        title: 'Volume Check-out: "Effective Java (3rd Edition)"',
-        desc: 'Issued to staff@booknest.com — Due: 5/28/2026',
-        timestamp: '5/14/2026',
-        tagColor: 'bg-blue-100 text-blue-700',
-        tag: 'ISSUED'
-      }
-    );
-  }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      {/* Operations Center Header */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Live Circulation Telemetry</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-800 tracking-tight">
-              Library Administrative Operations Center
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">
-              Master dashboard overview tracking physical shelf distribution, checkouts and collection liquidity.
-            </p>
+    <div className="space-y-6 animate-fadeIn">
+      {/* Hero Welcome Banner */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-slate-800">
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 max-w-3xl">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-400/20 text-blue-300 text-xs font-semibold mb-3">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+            LIVE CIRCULATION TELEMETRY
           </div>
-          <div className="flex items-center gap-3">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-2">
+            Library Administrative Operations Center
+          </h1>
+          <p className="text-slate-300 text-sm leading-relaxed">
+            Master dashboard overview tracking physical shelf distribution, checkouts and collection liquidity.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-3">
             <button
-              onClick={() => onNavigate('catalogue')}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-sm transition flex items-center gap-2"
+              onClick={() => onNavigate && onNavigate('catalogue')}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
             >
-              <span>Explore Catalogue</span>
-              <span>→</span>
+              Explore Catalogue <span>&rarr;</span>
             </button>
             <button
-              onClick={() => onNavigate('issues')}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold transition"
+              onClick={() => onNavigate && onNavigate('issues')}
+              className="px-4 py-2 bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer active:scale-95"
             >
               Circulation Desk
             </button>
           </div>
         </div>
+      </div>
 
-        {/* 4 Stat Metric Cards (Exact matching SRS Page 29) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-100">
-          {/* Stat 1 */}
-          <div className="bg-gradient-to-br from-blue-50/70 to-slate-50/50 p-4 rounded-xl border border-blue-100/60">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider">Total Holdings</span>
-              <span className="p-1.5 bg-blue-100 rounded-lg text-blue-600 text-xs">📚</span>
+      {/* 4 Stat Cards Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Stat 1 */}
+        <div className="card-modern p-5 relative overflow-hidden hover:shadow-md transition">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Holdings</span>
+            <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
             </div>
-            <div className="text-3xl font-black text-slate-800 mt-2">{totalCatalogued}</div>
-            <div className="text-xs font-medium text-slate-500 mt-1">Total Catalogued Volumes</div>
           </div>
-
-          {/* Stat 2 */}
-          <div className="bg-gradient-to-br from-emerald-50/70 to-slate-50/50 p-4 rounded-xl border border-emerald-100/60">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">On-Shelf Stock</span>
-              <span className="p-1.5 bg-emerald-100 rounded-lg text-emerald-600 text-xs">✅</span>
-            </div>
-            <div className="text-3xl font-black text-slate-800 mt-2">{totalAvailable}</div>
-            <div className="text-xs font-medium text-slate-500 mt-1">Volumes Available for Circulation</div>
+          <div className="mt-3">
+            <div className="text-2xl font-black tracking-tight text-slate-900">{totalBooks}</div>
+            <div className="text-xs font-medium text-slate-500 mt-0.5">Total Catalogued Volumes</div>
           </div>
+        </div>
 
-          {/* Stat 3 */}
-          <div className="bg-gradient-to-br from-indigo-50/70 to-slate-50/50 p-4 rounded-xl border border-indigo-100/60">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-indigo-700 uppercase tracking-wider">Active Loans</span>
-              <span className="p-1.5 bg-indigo-100 rounded-lg text-indigo-600 text-xs">📤</span>
+        {/* Stat 2 */}
+        <div className="card-modern p-5 relative overflow-hidden hover:shadow-md transition">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">On-Shelf Stock</span>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
-            <div className="text-3xl font-black text-slate-800 mt-2">{activeIssuesCount || 2}</div>
-            <div className="text-xs font-medium text-slate-500 mt-1">Active Circulations Out</div>
           </div>
+          <div className="mt-3">
+            <div className="text-2xl font-black tracking-tight text-emerald-600">{totalAvailableCopies}</div>
+            <div className="text-xs font-medium text-slate-500 mt-0.5">Volumes Available for Circulation</div>
+          </div>
+        </div>
 
-          {/* Stat 4 */}
-          <div className="bg-gradient-to-br from-amber-50/70 to-slate-50/50 p-4 rounded-xl border border-amber-100/60">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-amber-700 uppercase tracking-wider">Penalty Ledger</span>
-              <span className="p-1.5 bg-amber-100 rounded-lg text-amber-600 text-xs">💲</span>
+        {/* Stat 3 */}
+        <div className="card-modern p-5 relative overflow-hidden hover:shadow-md transition">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Active Loans</span>
+            <div className="w-9 h-9 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-600">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
             </div>
-            <div className="text-3xl font-black text-slate-800 mt-2">${totalPendingFines.toFixed(2)}</div>
-            <div className="text-xs font-medium text-slate-500 mt-1">Overdue Item Penalty Fees</div>
+          </div>
+          <div className="mt-3">
+            <div className="text-2xl font-black tracking-tight text-sky-600">{activeIssuedCount}</div>
+            <div className="text-xs font-medium text-slate-500 mt-0.5">Active Circulations Out</div>
+          </div>
+        </div>
+
+        {/* Stat 4 */}
+        <div className="card-modern p-5 relative overflow-hidden hover:shadow-md transition">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Penalty Ledger</span>
+            <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="text-2xl font-black tracking-tight text-amber-600">${totalPenaltyAmount.toFixed(2)}</div>
+            <div className="text-xs font-medium text-slate-500 mt-0.5">Overdue Item Penalty Fees</div>
           </div>
         </div>
       </div>
 
-      {/* Two-Panel Operational Grid (Page 29 Bottom Layout) */}
+      {/* Two Columns: Circulation Breakdown & Live Desk Operations */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Panel: Circulation Status Distribution */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-slate-800">Circulation Status Distribution</h2>
-              <span className="text-xs font-semibold text-slate-400">Inventory Ratio</span>
+        {/* Circulation Status Distribution */}
+        <div className="card-modern p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 tracking-tight">Circulation Status Distribution</h2>
+              <p className="text-xs text-slate-500">Real-time distribution of physical library stock lifecycle across borrowing accounts.</p>
             </div>
-            <p className="text-xs text-slate-500 mb-6">
-              Real-time distribution of physical library stock lifecycle across borrowing accounts.
-            </p>
+            <span className="badge-pill bg-slate-100 text-slate-700 border border-slate-200">Inventory Ratio</span>
+          </div>
 
-            <div className="space-y-4">
-              {/* ISSUED */}
-              <div>
-                <div className="flex items-center justify-between text-sm font-semibold mb-1">
-                  <span className="flex items-center gap-2 text-blue-700">
-                    <span className="w-3 h-3 rounded-full bg-blue-600"></span>
-                    ISSUED (Active Out)
-                  </span>
-                  <span className="text-slate-700 font-bold">{activeIssuesCount || 2}</span>
-                </div>
-                <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-600 rounded-full" style={{ width: `${Math.min(100, ((activeIssuesCount || 2) / 10) * 100)}%` }}></div>
-                </div>
+          <div className="space-y-4 mt-5">
+            {/* Issued */}
+            <div>
+              <div className="flex justify-between text-xs font-semibold mb-1.5">
+                <span className="text-blue-700 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-500" />
+                  ISSUED (Active Out)
+                </span>
+                <span className="font-bold text-slate-800">{activeIssuedCount}</span>
               </div>
-
-              {/* RETURNED */}
-              <div>
-                <div className="flex items-center justify-between text-sm font-semibold mb-1">
-                  <span className="flex items-center gap-2 text-emerald-700">
-                    <span className="w-3 h-3 rounded-full bg-emerald-600"></span>
-                    RETURNED (Archived Records)
-                  </span>
-                  <span className="text-slate-700 font-bold">{returnedCount || 3}</span>
-                </div>
-                <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${Math.min(100, ((returnedCount || 3) / 10) * 100)}%` }}></div>
-                </div>
+              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, (activeIssuedCount / Math.max(1, issueRecords.length)) * 100)}%` }}
+                />
               </div>
+            </div>
 
-              {/* OVERDUE */}
-              <div>
-                <div className="flex items-center justify-between text-sm font-semibold mb-1">
-                  <span className="flex items-center gap-2 text-red-700">
-                    <span className="w-3 h-3 rounded-full bg-red-600"></span>
-                    OVERDUE (Delinquent Accounts)
-                  </span>
-                  <span className="text-slate-700 font-bold">{overdueCount || 0}</span>
-                </div>
-                <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-red-600 rounded-full" style={{ width: `${Math.min(100, (overdueCount / 10) * 100)}%` }}></div>
-                </div>
+            {/* Returned */}
+            <div>
+              <div className="flex justify-between text-xs font-semibold mb-1.5">
+                <span className="text-emerald-700 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  RETURNED (Archived Records)
+                </span>
+                <span className="font-bold text-slate-800">{returnedCount}</span>
               </div>
+              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, (returnedCount / Math.max(1, issueRecords.length)) * 100)}%` }}
+                />
+              </div>
+            </div>
 
-              {/* LOST */}
-              <div>
-                <div className="flex items-center justify-between text-sm font-semibold mb-1">
-                  <span className="flex items-center gap-2 text-slate-600">
-                    <span className="w-3 h-3 rounded-full bg-slate-400"></span>
-                    LOST (Pending Write-off)
-                  </span>
-                  <span className="text-slate-700 font-bold">{lostCount || 0}</span>
-                </div>
-                <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-slate-400 rounded-full" style={{ width: `${Math.min(100, (lostCount / 10) * 100)}%` }}></div>
-                </div>
+            {/* Overdue */}
+            <div>
+              <div className="flex justify-between text-xs font-semibold mb-1.5">
+                <span className="text-amber-700 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  OVERDUE (Delinquent Accounts)
+                </span>
+                <span className="font-bold text-slate-800">{overdueCount}</span>
+              </div>
+              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, (overdueCount / Math.max(1, issueRecords.length)) * 100)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Lost */}
+            <div>
+              <div className="flex justify-between text-xs font-semibold mb-1.5">
+                <span className="text-rose-700 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-rose-500" />
+                  LOST (Pending Write-off)
+                </span>
+                <span className="font-bold text-slate-800">{lostCount}</span>
+              </div>
+              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-rose-500 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, (lostCount / Math.max(1, issueRecords.length)) * 100)}%` }}
+                />
               </div>
             </div>
           </div>
 
           <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>Automated Daily Synchronisation</span>
-            <button onClick={() => onNavigate('issues')} className="text-blue-600 hover:text-blue-700 font-semibold">
-              View Detailed Circulation Log →
+            <button
+              onClick={() => onNavigate && onNavigate('issues')}
+              className="text-blue-600 hover:text-blue-700 font-semibold cursor-pointer"
+            >
+              View Detailed Circulation Log &rarr;
             </button>
           </div>
         </div>
 
-        {/* Right Panel: Recent Real-time Desk Operations */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-slate-800">Recent Real-time Desk Operations</h2>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-600">Live Desk Stream</span>
+        {/* Recent Real-Time Desk Operations */}
+        <div className="card-modern p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 tracking-tight">Recent Real-time Desk Operations</h2>
+              <p className="text-xs text-slate-500">Audit log of book checkouts, returns, priority hold stages, and penalty assessments.</p>
             </div>
-            <p className="text-xs text-slate-500 mb-4">
-              Audit log of book checkouts, returns, priority hold stages, and penalty assessments.
-            </p>
-
-            <div className="space-y-3">
-              {recentActivities.map((act, idx) => (
-                <div key={idx} className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition flex items-start gap-3">
-                  <span className="text-lg shrink-0 mt-0.5">{act.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <h4 className="text-sm font-bold text-slate-800 truncate">{act.title}</h4>
-                      <span className="text-xs text-slate-400 shrink-0">{act.timestamp}</span>
-                    </div>
-                    <p className="text-xs text-slate-600 mt-0.5 truncate">{act.desc}</p>
-                    <div className="mt-2">
-                      <span className={`inline-block px-2 py-0.5 rounded-md text-[11px] font-bold ${act.tagColor}`}>
-                        {act.tag}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <span className="badge-pill bg-blue-50 text-blue-700 border border-blue-200">Live Desk Stream</span>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>Verified System Ledger</span>
-            <button onClick={() => onNavigate('holds')} className="text-indigo-600 hover:text-indigo-700 font-semibold">
-              Manage Hold Queues →
-            </button>
+          <div className="space-y-3 mt-4">
+            {recentActivities.length > 0 ? (
+              recentActivities.map((act) => (
+                <div
+                  key={act.id}
+                  className="p-3.5 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-200/70 transition flex items-start justify-between gap-3"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-700 shadow-2xs mt-0.5 flex-shrink-0">
+                      {act.type === 'HOLD' ? '📌' : act.type === 'CHECKOUT' ? '📤' : '📥'}
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-900">{act.title}</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">{act.desc}</div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-semibold text-slate-400 flex-shrink-0">
+                    {act.date}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <div className="py-8 text-center text-xs text-slate-400">
+                No circulation desk activity recorded yet.
+              </div>
+            )}
           </div>
         </div>
       </div>

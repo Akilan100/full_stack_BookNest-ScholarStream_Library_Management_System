@@ -2,342 +2,413 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import axios from 'axios';
 import { setRecords } from '../store/slices/bookIssueRecordSlice';
-import { bookIssueService } from '../services/bookIssueService';
 
-const STATUS_BADGES = {
-  ISSUED: 'bg-blue-100 text-blue-800 border-blue-200',
-  RETURNED: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  OVERDUE: 'bg-rose-100 text-rose-800 border-rose-200',
-  LOST: 'bg-slate-100 text-slate-700 border-slate-300',
+export const issueBook = async (payload) => {
+  return await axios.post('/api/issues', payload);
 };
 
-function BookIssuePage({ users: propUsers, books: propBooks }) {
+export const returnBook = async (id) => {
+  return await axios.put(`/api/issues/${id}/return`);
+};
+
+export const markBookLost = async (id) => {
+  return await axios.put(`/api/issues/${id}/lost`);
+};
+
+export const deleteIssueRecord = async (id) => {
+  return await axios.delete(`/api/issues/${id}`);
+};
+
+function BookIssuePage({ books = [], onDataChange }) {
   const dispatch = useDispatch();
-  const { records } = useSelector(s => s.bookIssueRecord);
-  const auth = useSelector(s => s.auth);
-  const isStaff = ['LIBRARIAN_STAFF', 'CHIEF_LIBRARIAN'].includes(auth.role);
-  const isPatron = auth.role === 'LIBRARY_PATRON';
+  const auth = useSelector((s) => s.auth);
+  const issueRecordsState = useSelector((s) => s.issueRecords) || { list: [] };
+  const records = Array.isArray(issueRecordsState) ? issueRecordsState : issueRecordsState.list || [];
 
-  const [localBooks, setLocalBooks] = useState([]);
-  const [localUsers, setLocalUsers] = useState([]);
-  const [showForm, setShowForm] = useState(false);
-  const [formBookId, setFormBookId] = useState('');
-  const [formUserId, setFormUserId] = useState('');
-  const [formDueDate, setFormDueDate] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
-  const [toast, setToast] = useState('');
+  const [filterState, setFilterState] = useState('ALL');
+  const [showIssueModal, setShowIssueModal] = useState(false);
+  const [patrons, setPatrons] = useState([]);
+
+  const [issueForm, setIssueForm] = useState({
+    bookId: '',
+    userId: '',
+    dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+  });
+
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const books = propBooks && propBooks.length > 0 ? propBooks : localBooks;
-  const users = propUsers && propUsers.length > 0 ? propUsers : localUsers;
-
-  const load = () => {
-    const fetcher = isPatron ? bookIssueService.getMy : bookIssueService.getAll;
-    fetcher()
-      .then(r => dispatch(setRecords(r.data || [])))
-      .catch(err => {
-        console.error('Error loading issue records:', err);
-      });
-  };
+  const isPatron = auth.role === 'LIBRARY_PATRON';
+  const isStaffOrAdmin = auth.role === 'CHIEF_LIBRARIAN' || auth.role === 'LIBRARIAN_STAFF' || auth.role === 'ROLE_ADMIN' || auth.role === 'ADMIN';
 
   useEffect(() => {
-    load();
-    if (!propBooks || propBooks.length === 0) {
-      axios.get('/api/books').then(r => {
-        const list = Array.isArray(r.data) ? r.data : (r.data?.content || []);
-        setLocalBooks(list);
-      }).catch(() => {});
+    fetchRecords();
+    if (isStaffOrAdmin) {
+      fetchPatrons();
     }
-    if (isStaff && (!propUsers || propUsers.length === 0)) {
-      axios.get('/api/auth/users').then(r => {
-        setLocalUsers(r.data || []);
-      }).catch(() => {});
-    }
-  }, [auth.role]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [auth.token, auth.role]);
 
-  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
-
-  const handleIssue = async (e) => {
-    e.preventDefault();
-    setError('');
+  const fetchRecords = async () => {
+    setLoading(true);
     try {
-      await bookIssueService.issueBook({
-        libraryBookId: Number(formBookId),
-        libraryAccountId: Number(formUserId || auth.accountId),
-        dueDate: formDueDate ? formDueDate + ':00' : undefined,
-      });
-      setShowForm(false);
-      setFormBookId(''); setFormUserId(''); setFormDueDate('');
-      load();
-      showToast('Book issued successfully.');
+      const endpoint = isPatron ? '/api/issues/my' : '/api/issues';
+      const res = await axios.get(endpoint);
+      dispatch(setRecords(res.data));
     } catch (err) {
-      setError(err?.response?.data?.message || err?.response?.data?.error || 'Failed to issue book.');
+      console.error('Failed to load issue records:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPatrons = async () => {
+    try {
+      const res = await axios.get('/api/auth/users');
+      setPatrons(res.data.filter((u) => u.role === 'LIBRARY_PATRON' || !u.role));
+    } catch (err) {
+      console.error('Failed to fetch patrons:', err);
+    }
+  };
+
+  const handleIssueSubmit = async (e) => {
+    e.preventDefault();
+    if (!issueForm.bookId) {
+      setError('Please select a target library book volume.');
+      return;
+    }
+
+    try {
+      const payload = {
+        bookId: Number(issueForm.bookId),
+        userId: Number(issueForm.userId || (patrons[0]?.id || 5)),
+        dueDate: issueForm.dueDate,
+      };
+      await issueBook(payload);
+      setShowIssueModal(false);
+      setSuccess('Book volume successfully checked out.');
+      setTimeout(() => setSuccess(''), 3500);
+      fetchRecords();
+      if (onDataChange) onDataChange();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to issue book. Volume may be unavailable.');
+      setTimeout(() => setError(''), 4000);
     }
   };
 
   const handleReturn = async (id) => {
     try {
-      await bookIssueService.returnBook(id);
-      load();
-      showToast('Book returned successfully.');
+      await returnBook(id);
+      setSuccess('Book return processed and inventory restocked.');
+      setTimeout(() => setSuccess(''), 3500);
+      fetchRecords();
+      if (onDataChange) onDataChange();
     } catch (err) {
-      showToast(err?.response?.data?.message || err?.response?.data?.error || 'Failed to return book.');
+      setError(err.response?.data?.message || 'Failed to process return.');
+      setTimeout(() => setError(''), 4000);
     }
   };
 
-  const handleLost = async (id) => {
-    if (!window.confirm('Mark this book as lost?')) return;
-    try {
-      await bookIssueService.markLost(id);
-      load();
-      showToast('Book marked as lost.');
-    } catch (err) {
-      showToast(err?.response?.data?.message || err?.response?.data?.error || 'Failed to mark lost.');
+  const handleMarkLost = async (id) => {
+    if (window.confirm('Mark this volume as LOST and assess replacement penalty?')) {
+      try {
+        await markBookLost(id);
+        setSuccess('Volume marked as lost.');
+        setTimeout(() => setSuccess(''), 3500);
+        fetchRecords();
+        if (onDataChange) onDataChange();
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to update lost status.');
+        setTimeout(() => setError(''), 4000);
+      }
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this issue record?')) return;
-    try {
-      await bookIssueService.delete(id);
-      load();
-      showToast('Record deleted.');
-    } catch (err) {
-      showToast(err?.response?.data?.message || err?.response?.data?.error || 'Failed to delete.');
+    if (window.confirm('Delete this circulation checkout record permanently?')) {
+      try {
+        await deleteIssueRecord(id);
+        setSuccess('Circulation log record deleted.');
+        setTimeout(() => setSuccess(''), 3500);
+        fetchRecords();
+        if (onDataChange) onDataChange();
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to delete circulation record.');
+        setTimeout(() => setError(''), 4000);
+      }
     }
   };
 
-  const filteredRecords = (records || []).filter(r => {
-    if (statusFilter === 'ALL') return true;
-    return r.status === statusFilter;
+  const filteredRecords = records.filter((r) => {
+    if (filterState === 'ALL') return true;
+    return r.status === filterState;
   });
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      {toast && (
-        <div className="fixed top-4 right-4 bg-emerald-600 text-white px-5 py-2.5 rounded-xl shadow-xl z-50 text-sm font-semibold flex items-center gap-2">
-          <span>✓</span>
-          <span>{toast}</span>
+    <div className="space-y-5 animate-fadeIn">
+      {/* Header card */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">
+            {isPatron ? 'My Issued Books & Lending History' : 'Circulation Desk Checkouts'}
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {isPatron
+              ? 'View active borrowed loans, return deadlines, and loan history'
+              : 'Audit active lending streams, process item checkouts and manage book returns'}
+          </p>
+        </div>
+
+        {isStaffOrAdmin && (
+          <button
+            onClick={() => {
+              setIssueForm({
+                bookId: books.find((b) => (b.availableCopies !== undefined ? b.availableCopies : b.totalCopies) > 0)?.id || '',
+                userId: patrons[0]?.id || '',
+                dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              });
+              setShowIssueModal(true);
+            }}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-sm transition active:scale-95 cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
+            </svg>
+            + Issue Book to Patron
+          </button>
+        )}
+      </div>
+
+      {/* Filter Toolbar */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+          <span className="text-xs font-semibold text-slate-700 whitespace-nowrap">
+            Filter tracking logs by lifecycle state:
+          </span>
+          <select
+            value={filterState}
+            onChange={(e) => setFilterState(e.target.value)}
+            className="px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition text-slate-800 cursor-pointer"
+          >
+            <option value="ALL">All States</option>
+            <option value="ISSUED">ISSUED (Active Out)</option>
+            <option value="RETURNED">RETURNED</option>
+            <option value="OVERDUE">OVERDUE</option>
+            <option value="LOST">LOST</option>
+          </select>
+        </div>
+
+        <button
+          onClick={() => setFilterState('ALL')}
+          className="w-full sm:w-auto px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+        >
+          Reset Filters
+        </button>
+      </div>
+
+      {/* Notifications */}
+      {error && (
+        <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-medium flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="text-rose-500 hover:text-rose-800 font-bold">×</button>
         </div>
       )}
 
-      {/* Header & Controls Toolbar (SRS Page 30 Bottom) */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-black text-slate-800 tracking-tight">
-              {isPatron ? 'My Issued Books & Lending History' : 'Circulation Desk Checkouts'}
-            </h1>
-            <p className="text-xs text-slate-500 mt-1">
-              {isPatron ? 'Track your active checkouts, loan terms, and due dates' : 'Manage active book checkouts, returns, inventory status, and circulation tracking'}
-            </p>
-          </div>
-
-          {isStaff && (
-            <button
-              onClick={() => setShowForm(true)}
-              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-sm transition flex items-center gap-2 shrink-0"
-            >
-              <span>+ Issue Book to Patron</span>
-            </button>
-          )}
+      {success && (
+        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-medium flex items-center justify-between">
+          <span>{success}</span>
+          <button onClick={() => setSuccess('')} className="text-emerald-500 hover:text-emerald-800 font-bold">×</button>
         </div>
+      )}
 
-        {/* Filter Controls Row */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mt-6 pt-6 border-t border-slate-100">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-600">Filter tracking logs by lifecycle state:</span>
-            <select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-medium text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="ALL">All States</option>
-              <option value="ISSUED">ISSUED (Active Out)</option>
-              <option value="RETURNED">RETURNED</option>
-              <option value="OVERDUE">OVERDUE</option>
-              <option value="LOST">LOST</option>
-            </select>
-          </div>
-
-          {statusFilter !== 'ALL' && (
-            <button
-              onClick={() => setStatusFilter('ALL')}
-              className="text-xs text-blue-600 hover:text-blue-700 font-semibold"
-            >
-              Reset Filters
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Main Circulation Table (SRS Page 30 Table Columns) */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+      {/* Table */}
+      <div className="card-modern overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50/80 border-b border-slate-200/80 text-slate-600 text-xs uppercase font-bold tracking-wider">
-              <tr>
-                <th className="px-5 py-3.5">Tracking ID</th>
-                <th className="px-5 py-3.5">Volume Title</th>
-                <th className="px-5 py-3.5">Borrower Account</th>
-                <th className="px-5 py-3.5">Checkout Timestamp</th>
-                <th className="px-5 py-3.5">Target Due Date</th>
-                <th className="px-5 py-3.5">Lifecycle Status</th>
-                <th className="px-5 py-3.5">Fine Balance</th>
-                <th className="px-5 py-3.5 text-right">Desk Operations</th>
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="table-header">
+                <th className="py-3 px-4">TRACKING ID</th>
+                <th className="py-3 px-4">VOLUME TITLE</th>
+                <th className="py-3 px-4">BORROWER ACCOUNT</th>
+                <th className="py-3 px-4">CHECKOUT TIMESTAMP</th>
+                <th className="py-3 px-4">TARGET DUE DATE</th>
+                <th className="py-3 px-4">LIFECYCLE STATUS</th>
+                <th className="py-3 px-4">FINE BALANCE</th>
+                <th className="py-3 px-4 text-right">DESK OPERATIONS</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {filteredRecords.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-5 py-8 text-center text-sm text-slate-400">
-                    No circulation checkouts match current criteria.
-                  </td>
-                </tr>
-              ) : (
-                filteredRecords.map(rec => (
-                  <tr key={rec.id} className="hover:bg-slate-50/80 transition">
-                    <td className="px-5 py-3.5 font-mono text-xs font-bold text-slate-500">#{rec.id}</td>
-                    <td className="px-5 py-3.5 font-bold text-slate-800">{rec.bookTitle || `Volume #${rec.libraryBookId}`}</td>
-                    <td className="px-5 py-3.5">
-                      <div className="text-xs font-bold text-slate-800">{rec.accountFullName || 'Patron User'}</div>
-                      <div className="text-[11px] text-slate-400">{rec.accountEmail || `Account #${rec.libraryAccountId}`}</div>
-                    </td>
-                    <td className="px-5 py-3.5 text-xs text-slate-600">
-                      {rec.issueDate ? new Date(rec.issueDate).toLocaleDateString() : 'N/A'}
-                    </td>
-                    <td className="px-5 py-3.5 text-xs text-slate-600">
-                      {rec.dueDate ? new Date(rec.dueDate).toLocaleDateString() : 'N/A'}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span className={`inline-block px-2.5 py-1 rounded-md text-[11px] font-bold border ${STATUS_BADGES[rec.status] || 'bg-slate-100 text-slate-700'}`}>
-                        {rec.status}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 font-mono text-xs font-bold text-slate-700">
-                      ${Number(rec.fineAmount || 0).toFixed(2)}
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                        {rec.status === 'ISSUED' && (
+            <tbody className="divide-y divide-slate-100 text-xs">
+              {filteredRecords.length > 0 ? (
+                filteredRecords.map((r) => {
+                  const bookTitle = r.bookTitle || (r.book && r.book.title) || 'Library Volume';
+                  const borrower = r.userEmail || (r.user && (r.user.email || r.user.username)) || 'Patron Account';
+                  const fine = r.fineAmount ? `$${Number(r.fineAmount).toFixed(2)}` : '$0.00';
+
+                  let statusBadge = 'bg-blue-50 text-blue-700 border-blue-200';
+                  if (r.status === 'RETURNED') statusBadge = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                  if (r.status === 'OVERDUE') statusBadge = 'bg-amber-50 text-amber-700 border-amber-200';
+                  if (r.status === 'LOST') statusBadge = 'bg-rose-50 text-rose-700 border-rose-200';
+
+                  return (
+                    <tr key={r.id} className="table-row">
+                      <td className="py-3.5 px-4 font-mono text-[11px] text-slate-500 font-semibold">
+                        #{r.id}
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-slate-900">
+                        {bookTitle}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-600">
+                        {borrower}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-500 font-mono text-[11px]">
+                        {r.issueDate || '—'}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-500 font-mono text-[11px]">
+                        {r.dueDate || '—'}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className={`badge-pill border ${statusBadge}`}>
+                          {r.status || 'ISSUED'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-slate-800">
+                        {fine}
+                      </td>
+                      <td className="py-3.5 px-4 text-right space-x-1.5">
+                        {r.status === 'ISSUED' && (
                           <button
-                            onClick={() => handleReturn(rec.id)}
-                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition shadow-xs"
+                            onClick={() => handleReturn(r.id)}
+                            className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-semibold transition cursor-pointer"
                           >
-                            Return
+                            Process Return
                           </button>
                         )}
-                        {isStaff && rec.status === 'ISSUED' && (
+
+                        {isStaffOrAdmin && r.status === 'ISSUED' && (
                           <button
-                            onClick={() => handleLost(rec.id)}
-                            className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold transition"
+                            onClick={() => handleMarkLost(r.id)}
+                            className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-[11px] font-semibold transition cursor-pointer"
                           >
-                            Lost
+                            Mark Lost
                           </button>
                         )}
-                        {isStaff && (
+
+                        {isStaffOrAdmin && (
                           <button
-                            onClick={() => handleDelete(rec.id)}
-                            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition"
+                            onClick={() => handleDelete(r.id)}
+                            className="px-2.5 py-1 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 border border-slate-200 rounded-lg text-[11px] font-semibold transition cursor-pointer"
                           >
                             Delete
                           </button>
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan="8" className="py-8 text-center text-slate-400">
+                    No circulation records found for this view.
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Issue Book Modal (SRS Page 31 Top Modal) */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 p-4" role="dialog">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md border border-slate-100">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-              <h3 className="text-lg font-bold text-slate-800">Issue Book at Circulation Desk</h3>
+      {/* Modal: Issue Book at Circulation Desk */}
+      {showIssueModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-fadeIn">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-base font-bold text-slate-900 tracking-tight">
+                Issue Book at Circulation Desk
+              </h3>
               <button
-                onClick={() => { setShowForm(false); setError(''); }}
-                className="text-slate-400 hover:text-slate-600 text-lg font-bold w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 transition"
+                type="button"
+                onClick={() => setShowIssueModal(false)}
+                className="text-slate-400 hover:text-slate-700 text-lg font-bold cursor-pointer"
               >
                 ×
               </button>
             </div>
 
-            {error && (
-              <div className="mb-4 px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
-                {error}
-              </div>
-            )}
-
-            <form onSubmit={handleIssue} className="space-y-4">
+            <form onSubmit={handleIssueSubmit} className="mt-4 space-y-3.5">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Target Library Book Volume <span className="text-rose-500">*</span>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Target Library Book Volume *
                 </label>
                 <select
-                  value={formBookId}
-                  onChange={e => setFormBookId(e.target.value)}
                   required
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={issueForm.bookId}
+                  onChange={(e) => setIssueForm({ ...issueForm, bookId: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer"
                 >
-                  <option value="">Select a book volume...</option>
-                  {books.map(b => (
-                    <option key={b.id} value={b.id}>
-                      {b.title} ({b.availableCopies}/{b.totalCopies} available) - ISBN: {b.isbn}
-                    </option>
-                  ))}
+                  <option value="">Select Catalogue Volume...</option>
+                  {books.map((b) => {
+                    const avail = b.availableCopies !== undefined ? b.availableCopies : b.totalCopies;
+                    return (
+                      <option key={b.id} value={b.id} disabled={avail <= 0}>
+                        {b.title} ({avail} available) — ISBN: {b.isbn}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Borrowing Patron Account ID <span className="text-rose-500">*</span>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Borrowing Patron Account ID *
                 </label>
-                <select
-                  value={formUserId}
-                  onChange={e => setFormUserId(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select a patron account...</option>
-                  {users.map(u => (
-                    <option key={u.id} value={u.id}>
-                      #{u.id} — {u.fullName} ({u.email}) [{u.role}]
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[11px] text-slate-400 mt-1">
+                {patrons.length > 0 ? (
+                  <select
+                    value={issueForm.userId}
+                    onChange={(e) => setIssueForm({ ...issueForm, userId: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                  >
+                    {patrons.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.fullName || p.username} ({p.email}) — ID: #{p.id}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="number"
+                    placeholder="Enter numerical Patron ID (e.g. 5)"
+                    value={issueForm.userId}
+                    onChange={(e) => setIssueForm({ ...issueForm, userId: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                )}
+                <p className="text-[10px] text-slate-400 mt-1">
                   Must reference an active unsuspended patron ledger tracking profile
                 </p>
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Target Due Date (Optional)
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Target Due Date
                 </label>
                 <input
-                  type="datetime-local"
-                  value={formDueDate}
-                  onChange={e => setFormDueDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  type="date"
+                  value={issueForm.dueDate}
+                  onChange={(e) => setIssueForm({ ...issueForm, dueDate: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
               </div>
 
-              <div className="flex gap-2.5 pt-2">
+              <div className="flex gap-2.5 pt-3 border-t border-slate-100">
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition"
+                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-sm"
                 >
                   Confirm Book Check-out
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowForm(false)}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition"
+                  onClick={() => setShowIssueModal(false)}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -351,4 +422,3 @@ function BookIssuePage({ users: propUsers, books: propBooks }) {
 }
 
 export default BookIssuePage;
-export { BookIssuePage };

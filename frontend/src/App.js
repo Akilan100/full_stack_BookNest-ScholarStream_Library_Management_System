@@ -1,283 +1,366 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import axios from 'axios';
-import { setAuth, clearAuth } from './store/slices/authSlice';
-import { setBooks } from './store/slices/libraryBookSlice';
+import { clearAuth } from './store/slices/authSlice';
+import { setBooks, addBook, updateBookInState, removeBookFromState } from './store/slices/libraryBookSlice';
+import { setRecords } from './store/slices/bookIssueRecordSlice';
+import { setHolds } from './store/slices/bookHoldRequestSlice';
+import { setFines } from './store/slices/finePaymentSlice';
+
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import BookIssuePage from './pages/BookIssuePage';
 import BookHoldPage from './pages/BookHoldPage';
 import FinePaymentPage from './pages/FinePaymentPage';
 
-const ROLES = ['LIBRARIAN_STAFF', 'CHIEF_LIBRARIAN', 'LIBRARY_PATRON'];
-const CATEGORIES = ['All Categories / Streams', 'Computer Science', 'Mathematics', 'Science', 'History', 'Software Engineering'];
-const STAFF_ROLES = ['LIBRARIAN_STAFF', 'CHIEF_LIBRARIAN'];
-
 function App() {
   const dispatch = useDispatch();
-  const auth = useSelector(s => s.auth);
-  const { books, totalPages } = useSelector(s => s.libraryBook);
-  const issueRecords = useSelector(s => s.bookIssueRecord.records);
-  const holds = useSelector(s => s.bookHoldRequest.holds);
-  const fines = useSelector(s => s.finePayment.fines);
+  const auth = useSelector((s) => s.auth);
+  const libraryBookState = useSelector((s) => s.libraryBook) || { books: [] };
+  const books = Array.isArray(libraryBookState) ? libraryBookState : (libraryBookState.books || libraryBookState.list || []);
+  
+  const issueRecordsState = useSelector((s) => s.bookIssueRecord) || { list: [] };
+  const issueRecords = Array.isArray(issueRecordsState) ? issueRecordsState : (issueRecordsState.records || issueRecordsState.list || []);
 
-  const [isRegister, setIsRegister] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [role, setRole] = useState(ROLES[0]);
-  const [fullName, setFullName] = useState('');
-  const [authError, setAuthError] = useState('');
+  const holdsState = useSelector((s) => s.bookHoldRequest) || { list: [] };
+  const holds = Array.isArray(holdsState) ? holdsState : (holdsState.holds || holdsState.list || []);
 
-  const [view, setView] = useState('catalogue');
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('All Categories / Streams');
-  const [page, setPage] = useState(0);
+  const finesState = useSelector((s) => s.finePayment) || { list: [] };
+  const fines = Array.isArray(finesState) ? finesState : (finesState.fines || finesState.list || []);
 
+  const [activeTab, setActiveTab] = useState('catalogue');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All Categories / Streams');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
+  // Modals state
   const [showCreate, setShowCreate] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
-  const [editBook, setEditBook] = useState(null);
+  const [editingBook, setEditingBook] = useState(null);
 
-  const [formIsbn, setFormIsbn] = useState('');
-  const [formTitle, setFormTitle] = useState('');
-  const [formAuthor, setFormAuthor] = useState('');
-  const [formCategory, setFormCategory] = useState('');
-  const [formTotalCopies, setFormTotalCopies] = useState(1);
+  // Form state
+  const [formData, setFormData] = useState({
+    isbn: '',
+    title: '',
+    author: '',
+    category: 'Computer Science',
+    totalCopies: 5,
+    availableCopies: 5,
+  });
+
   const [formErrors, setFormErrors] = useState({});
+  const [globalError, setGlobalError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const isPatron = auth.role === 'LIBRARY_PATRON';
+  const isStaffOrAdmin = auth.role === 'CHIEF_LIBRARIAN' || auth.role === 'LIBRARIAN_STAFF' || auth.role === 'ROLE_ADMIN' || auth.role === 'ADMIN';
 
+  // Configure axios token
   useEffect(() => {
-    if (!auth.token) return;
-    const params = { page, size: 10 };
-    if (search) params.title = search;
-    if (category && category !== 'All Categories / Streams' && category !== 'All') {
-      params.category = category;
+    if (auth.token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${auth.token}`;
+      fetchCatalogue();
+    } else {
+      delete axios.defaults.headers.common['Authorization'];
     }
-    axios.get('/api/books', { params }).then(res => {
-      dispatch(setBooks(res.data));
-    }).catch(() => {});
-  }, [auth.token, search, category, page]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (!auth.token) return;
-    axios.get('/api/auth/users').then(res => {
-      const data = res.data;
-      setUsers(Array.isArray(data) ? data : (data?.content ?? []));
-    }).catch(() => {});
   }, [auth.token]);
 
-  const fetchBooks = () => {
-    const params = { page, size: 10 };
-    if (search) params.title = search;
-    if (category && category !== 'All Categories / Streams' && category !== 'All') {
-      params.category = category;
-    }
-    axios.get('/api/books', { params }).then(res => {
-      dispatch(setBooks(res.data));
-    }).catch(() => {});
-  };
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setAuthError('');
+  const fetchCatalogue = async () => {
     try {
-      const res = await axios.post('/api/auth/login', { email, password });
-      axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
-      dispatch(setAuth(res.data));
+      const res = await axios.get('/api/books');
+      const data = res.data;
+      if (Array.isArray(data)) {
+        dispatch(setBooks(data));
+      } else if (data && Array.isArray(data.content)) {
+        dispatch(setBooks(data.content));
+      }
     } catch (err) {
-      setAuthError(err?.response?.data?.error || err?.response?.data?.message || 'Login failed');
+      console.error('Failed to load catalogue books:', err);
     }
   };
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    setAuthError('');
+  const fetchAuxiliaryData = async () => {
     try {
-      const res = await axios.post('/api/auth/register', { email, password, role, fullName });
-      axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
-      dispatch(setAuth(res.data));
-    } catch (err) {
-      setAuthError(err?.response?.data?.error || err?.response?.data?.message || 'Registration failed');
-    }
-  };
+      if (auth.token) {
+        // Fetch issues
+        try {
+          const res = isPatron ? await axios.get('/api/issues/my') : await axios.get('/api/issues');
+          if (Array.isArray(res.data)) dispatch(setRecords(res.data));
+        } catch (e) {}
 
-  const handleLogout = () => {
-    delete axios.defaults.headers.common['Authorization'];
-    dispatch(clearAuth());
-    localStorage.clear();
+        // Fetch holds
+        try {
+          const res = isPatron ? await axios.get('/api/holds/my') : await axios.get('/api/holds');
+          if (Array.isArray(res.data)) dispatch(setHolds(res.data));
+        } catch (e) {}
+
+        // Fetch fines
+        try {
+          const res = isPatron ? await axios.get('/api/fines/my') : await axios.get('/api/fines');
+          if (Array.isArray(res.data)) dispatch(setFines(res.data));
+        } catch (e) {}
+      }
+    } catch (err) {
+      console.error('Failed auxiliary fetch:', err);
+    }
   };
 
   const resetForm = () => {
-    setFormIsbn('');
-    setFormTitle('');
-    setFormAuthor('');
-    setFormCategory('');
-    setFormTotalCopies(1);
+    setFormData({
+      isbn: '',
+      title: '',
+      author: '',
+      category: 'Computer Science',
+      totalCopies: 5,
+      availableCopies: 5,
+    });
     setFormErrors({});
   };
 
-  const validateForm = () => {
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
     const errors = {};
-    if (!formIsbn) errors.isbn = 'ISBN identifier is mandatory';
-    if (!formTitle) errors.title = 'Volume title is mandatory';
-    return errors;
+    if (!formData.isbn.trim()) errors.isbn = 'ISBN identifier is mandatory';
+    if (!formData.title.trim()) errors.title = 'Volume title is mandatory';
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
+    try {
+      const payload = {
+        isbn: formData.isbn.trim(),
+        title: formData.title.trim(),
+        author: formData.author.trim() || 'Unknown Author',
+        category: formData.category,
+        totalCopies: parseInt(formData.totalCopies, 10) || 1,
+        availableCopies: parseInt(formData.availableCopies !== undefined ? formData.availableCopies : formData.totalCopies, 10) || 1,
+      };
+      const res = await axios.post('/api/books', payload);
+      dispatch(addBook(res.data));
+      setShowCreate(false);
+      resetForm();
+      setSuccessMessage('Volume catalogue entry created successfully.');
+      setTimeout(() => setSuccessMessage(''), 3500);
+      fetchCatalogue();
+    } catch (err) {
+      setGlobalError(err.response?.data?.message || 'Failed to register library volume.');
+      setTimeout(() => setGlobalError(''), 4000);
+    }
   };
 
-  const handleCreate = async (e) => {
+  const handleEditSubmit = async (e) => {
     e.preventDefault();
-    const errors = validateForm();
-    if (Object.keys(errors).length) { setFormErrors(errors); return; }
-    await axios.post('/api/books', {
-      isbn: formIsbn,
-      title: formTitle,
-      author: formAuthor,
-      category: formCategory,
-      totalCopies: formTotalCopies
+    if (!editingBook) return;
+
+    try {
+      const payload = {
+        isbn: formData.isbn.trim(),
+        title: formData.title.trim(),
+        author: formData.author.trim(),
+        category: formData.category,
+        totalCopies: parseInt(formData.totalCopies, 10) || 1,
+        availableCopies: parseInt(formData.availableCopies, 10) || 0,
+      };
+      const res = await axios.put(`/api/books/${editingBook.id}`, payload);
+      dispatch(updateBookInState(res.data));
+      setShowEdit(false);
+      setEditingBook(null);
+      resetForm();
+      setSuccessMessage('Volume catalogue record modified successfully.');
+      setTimeout(() => setSuccessMessage(''), 3500);
+      fetchCatalogue();
+    } catch (err) {
+      setGlobalError(err.response?.data?.message || 'Failed to update volume record.');
+      setTimeout(() => setGlobalError(''), 4000);
+    }
+  };
+
+  const handleDeleteBook = async (bookId) => {
+    if (window.confirm('Are you sure you want to remove this volume from the master catalogue?')) {
+      try {
+        await axios.delete(`/api/books/${bookId}`);
+        dispatch(removeBookFromState(bookId));
+        setSuccessMessage('Volume removed from library inventory.');
+        setTimeout(() => setSuccessMessage(''), 3500);
+        fetchCatalogue();
+      } catch (err) {
+        setGlobalError(err.response?.data?.message || 'Failed to delete volume record.');
+        setTimeout(() => setGlobalError(''), 4000);
+      }
+    }
+  };
+
+  const openEditModal = (book) => {
+    setEditingBook(book);
+    setFormData({
+      isbn: book.isbn || '',
+      title: book.title || '',
+      author: book.author || '',
+      category: book.category || 'Computer Science',
+      totalCopies: book.totalCopies || 1,
+      availableCopies: book.availableCopies !== undefined ? book.availableCopies : book.totalCopies,
     });
-    fetchBooks();
-    setShowCreate(false);
-    resetForm();
-  };
-
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-    const errors = validateForm();
-    if (Object.keys(errors).length) { setFormErrors(errors); return; }
-    await axios.put(`/api/books/${editBook.id}`, {
-      isbn: formIsbn,
-      title: formTitle,
-      author: formAuthor,
-      category: formCategory,
-      totalCopies: formTotalCopies
-    });
-    fetchBooks();
-    setShowEdit(false);
-    resetForm();
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this book?')) return;
-    await axios.delete(`/api/books/${id}`);
-    fetchBooks();
-  };
-
-  const openEdit = (book) => {
-    setEditBook(book);
-    setFormIsbn(book.isbn);
-    setFormTitle(book.title);
-    setFormAuthor(book.author);
-    setFormCategory(book.category);
-    setFormTotalCopies(book.totalCopies);
-    setFormErrors({});
     setShowEdit(true);
   };
 
-  const handleLoginWithLoading = async (e) => {
-    setLoading(true);
-    await handleLogin(e);
-    setLoading(false);
+  const handleLogout = () => {
+    dispatch(clearAuth());
+    setActiveTab('catalogue');
   };
-
-  const handleRegisterWithLoading = async (e) => {
-    setLoading(true);
-    await handleRegister(e);
-    setLoading(false);
-  };
-
-  const isStaff = STAFF_ROLES.includes(auth.role);
 
   if (!auth.token) {
-    return (
-      <LoginPage
-        isRegister={isRegister}
-        setIsRegister={setIsRegister}
-        email={email}
-        setEmail={setEmail}
-        password={password}
-        setPassword={setPassword}
-        fullName={fullName}
-        setFullName={setFullName}
-        role={role}
-        setRole={setRole}
-        authError={authError}
-        loading={loading}
-        onLogin={handleLoginWithLoading}
-        onRegister={handleRegisterWithLoading}
-      />
-    );
+    return <LoginPage />;
   }
 
-  const NAV_ITEMS = [
-    { key: 'home', label: 'Home' },
-    { key: 'catalogue', label: 'Catalogue' },
-    { key: 'issues', label: 'Lending' },
-    { key: 'holds', label: 'Holds' },
-    { key: 'fines', label: 'Fines' },
-  ];
+  // Filter catalogue
+  const filteredBooks = books.filter((b) => {
+    const matchesSearch =
+      (b.title && b.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (b.author && b.author.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (b.isbn && b.isbn.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesCategory =
+      selectedCategory === 'All Categories / Streams' ||
+      selectedCategory === '' ||
+      b.category === selectedCategory;
+
+    return matchesSearch && matchesCategory;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredBooks.length / itemsPerPage));
+  const currentBooks = filteredBooks.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800">
-      {/* Top Main Navigation (SRS Pages 29-32 Navbar) */}
-      <header className="bg-white border-b border-slate-200/80 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            {/* Brand Logo */}
-            <div
-              onClick={() => setView('home')}
-              className="flex items-center gap-2.5 cursor-pointer select-none"
-            >
-              <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-base shadow-sm">
-                📚
+    <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col selection:bg-blue-600 selection:text-white">
+      {/* Top Navigation Bar */}
+      <header className="bg-slate-950 text-white border-b border-slate-800 sticky top-0 z-40 shadow-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo and App Title */}
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-xl flex items-center justify-center shadow-md shadow-blue-500/20 border border-white/10">
+                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
               </div>
-              <div>
-                <span className="font-black text-lg tracking-tight text-slate-900">BookNest</span>
+              <div className="flex flex-col">
+                <span className="font-bold text-base tracking-tight text-white flex items-center gap-1.5 leading-tight">
+                  BookNest <span className="text-[10px] font-semibold px-1.5 py-0.2 bg-blue-500/20 text-blue-300 rounded border border-blue-400/20">ScholarStream</span>
+                </span>
+                <span className="text-[10px] text-slate-400">Integrated Library Management</span>
               </div>
             </div>
 
             {/* Navigation Tabs */}
-            <nav className="flex items-center gap-1">
-              {NAV_ITEMS.map(item => (
-                <button
-                  key={item.key}
-                  onClick={() => setView(item.key)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                    view === item.key
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
+            <nav className="hidden md:flex items-center space-x-1">
+              <button
+                onClick={() => setActiveTab('home')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'home'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-850'
+                }`}
+              >
+                <span>📊</span> Home
+              </button>
+              <button
+                onClick={() => setActiveTab('catalogue')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'catalogue'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-850'
+                }`}
+              >
+                <span>📚</span> Catalogue
+              </button>
+              <button
+                onClick={() => setActiveTab('issues')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'issues'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-850'
+                }`}
+              >
+                <span>🔄</span> Lending
+              </button>
+              <button
+                onClick={() => setActiveTab('holds')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'holds'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-850'
+                }`}
+              >
+                <span>⏳</span> Holds
+              </button>
+              <button
+                onClick={() => setActiveTab('fines')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'fines'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-850'
+                }`}
+              >
+                <span>💳</span> Fines
+              </button>
             </nav>
-          </div>
 
-          {/* User Profile & Logout */}
-          <div className="flex items-center gap-3">
-            <div className="text-right hidden sm:block">
-              <div className="text-xs font-bold text-slate-800">
-                Welcome back! {auth.fullName || 'Chief Librarian'}
+            {/* User Profile & Actions */}
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:flex flex-col text-right">
+                <span className="text-xs font-semibold text-white">
+                  Welcome back! {auth.fullName || auth.user?.fullName || 'Chief Librarian'}
+                </span>
+                <span className="text-[10px] text-blue-400 font-mono font-medium">
+                  {auth.role || 'CHIEF_LIBRARIAN'}
+                </span>
               </div>
-              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                {auth.role || 'CHIEF_LIBRARIAN'}
-              </div>
+
+              <button
+                onClick={handleLogout}
+                className="px-3 py-1.5 bg-slate-850 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-700/80 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
+                title="Sign out of the system"
+              >
+                <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Logout
+              </button>
             </div>
-            <button
-              onClick={handleLogout}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition"
-            >
-              Logout
-            </button>
           </div>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main>
-        {view === 'home' && (
+      {/* Main Container */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+        {/* Global Notifications */}
+        {globalError && (
+          <div className="mb-4 p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-medium flex items-center justify-between shadow-2xs">
+            <div className="flex items-center gap-2">
+              <span className="text-rose-500 font-bold">Error:</span>
+              <span>{globalError}</span>
+            </div>
+            <button onClick={() => setGlobalError('')} className="text-rose-500 hover:text-rose-800 font-bold">×</button>
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="mb-4 p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-medium flex items-center justify-between shadow-2xs">
+            <div className="flex items-center gap-2">
+              <span className="text-emerald-500 font-bold">Success:</span>
+              <span>{successMessage}</span>
+            </div>
+            <button onClick={() => setSuccessMessage('')} className="text-emerald-500 hover:text-emerald-800 font-bold">×</button>
+          </div>
+        )}
+
+        {/* Tab Routing */}
+        {activeTab === 'home' && (
           <DashboardPage
-            onNavigate={setView}
+            onNavigate={(tab) => setActiveTab(tab)}
             books={books}
             issueRecords={issueRecords}
             holds={holds}
@@ -285,268 +368,330 @@ function App() {
           />
         )}
 
-        {view === 'catalogue' && (
-          <div className="p-6 max-w-7xl mx-auto space-y-6">
-            {/* Header & Controls Toolbar (SRS Page 30 Top) */}
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl font-black text-slate-800 tracking-tight">
-                    Library Master Catalogue
-                  </h1>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Search and browse indexed library volumes, check availability status, and initiate loans
-                  </p>
-                </div>
-
-                {isStaff && (
-                  <button
-                    onClick={() => { resetForm(); setShowCreate(true); }}
-                    className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-sm transition flex items-center gap-2 shrink-0"
-                  >
-                    <span>+ Add New Book</span>
-                  </button>
-                )}
+        {activeTab === 'catalogue' && (
+          <div className="space-y-5 animate-fadeIn">
+            {/* Header & Primary Action */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+              <div>
+                <h1 className="text-xl font-bold tracking-tight text-slate-900">
+                  Library Master Catalogue
+                </h1>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Search and browse indexed library volumes, check availability status, and initiate loans
+                </p>
               </div>
 
-              {/* Search & Category Filter Toolbar */}
-              <div className="flex flex-wrap items-center gap-3 mt-6 pt-6 border-t border-slate-100">
-                <div className="relative flex-1 min-w-[260px]">
-                  <input
-                    placeholder="Search by book title or author name..."
-                    value={search}
-                    onChange={e => { setSearch(e.target.value); setPage(0); }}
-                    className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <span className="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
-                </div>
-
-                <select
-                  value={category}
-                  onChange={e => { setCategory(e.target.value); setPage(0); }}
-                  className="px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              {isStaffOrAdmin && (
+                <button
+                  onClick={() => { resetForm(); setShowCreate(true); }}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-sm transition active:scale-95 cursor-pointer"
                 >
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
+                  </svg>
+                  + Add New Book
+                </button>
+              )}
+            </div>
+
+            {/* Filter and Search Bar */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </span>
+                <input
+                  type="text"
+                  placeholder="Search by book title or author name..."
+                  value={searchTerm}
+                  onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                  className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition text-slate-800"
+                />
+              </div>
+
+              <div className="sm:w-64">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => { setSelectedCategory(e.target.value); setCurrentPage(1); }}
+                  className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition text-slate-800 cursor-pointer"
+                >
+                  <option value="All Categories / Streams">All Categories / Streams</option>
+                  <option value="Computer Science">Computer Science</option>
+                  <option value="Mathematics">Mathematics</option>
+                  <option value="Science">Science</option>
+                  <option value="History">History</option>
+                  <option value="Software Engineering">Software Engineering</option>
                 </select>
               </div>
             </div>
 
-            {/* Catalogue Master Table (SRS Page 30 Table Columns) */}
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+            {/* Master Books Table */}
+            <div className="card-modern overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50/80 border-b border-slate-200/80 text-slate-600 text-xs uppercase font-bold tracking-wider">
-                    <tr>
-                      <th className="px-5 py-3.5">ISBN Number</th>
-                      <th className="px-5 py-3.5">Volume Title</th>
-                      <th className="px-5 py-3.5">Author / Creator</th>
-                      <th className="px-5 py-3.5">Category / Shelf</th>
-                      <th className="px-5 py-3.5">Availability</th>
-                      <th className="px-5 py-3.5 text-right">Service Actions</th>
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="table-header">
+                      <th className="py-3 px-4">ISBN NUMBER</th>
+                      <th className="py-3 px-4">VOLUME TITLE</th>
+                      <th className="py-3 px-4">AUTHOR / CREATOR</th>
+                      <th className="py-3 px-4">CATEGORY / SHELF</th>
+                      <th className="py-3 px-4">AVAILABILITY</th>
+                      <th className="py-3 px-4 text-right">SERVICE ACTIONS</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {books.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-5 py-8 text-center text-sm text-slate-400">
-                          No catalogue volumes match the query.
-                        </td>
-                      </tr>
-                    ) : (
-                      books.map(book => {
+                  <tbody className="divide-y divide-slate-100 text-xs">
+                    {currentBooks.length > 0 ? (
+                      currentBooks.map((book) => {
                         const total = book.totalCopies || 1;
-                        const available = book.availableCopies ?? 0;
-                        const pct = Math.round((available / total) * 100);
+                        const avail = book.availableCopies !== undefined ? book.availableCopies : total;
+                        const percent = Math.round((avail / total) * 100);
 
                         return (
-                          <tr key={book.id} className="hover:bg-slate-50/80 transition">
-                            <td className="px-5 py-3.5 font-mono text-xs font-bold text-slate-500">{book.isbn}</td>
-                            <td className="px-5 py-3.5 font-bold text-slate-800">{book.title}</td>
-                            <td className="px-5 py-3.5 text-xs text-slate-600">{book.author}</td>
-                            <td className="px-5 py-3.5">
-                              <span className="inline-block px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-600">
+                          <tr key={book.id} className="table-row">
+                            <td className="py-3.5 px-4 font-mono text-[11px] text-slate-600">
+                              <span className="px-2 py-0.5 bg-slate-100 rounded border border-slate-200/80">
+                                {book.isbn || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 font-bold text-slate-900">
+                              {book.title}
+                            </td>
+                            <td className="py-3.5 px-4 text-slate-600">
+                              {book.author}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <span className="badge-pill bg-slate-100 text-slate-700 border border-slate-200">
                                 {book.category || 'General'}
                               </span>
                             </td>
-                            <td className="px-5 py-3.5">
-                              <div className="space-y-1">
-                                <div className="text-xs font-semibold text-slate-700">
-                                  {available}/{total} available
+                            <td className="py-3.5 px-4">
+                              <div className="flex flex-col gap-1 w-28">
+                                <div className="flex justify-between text-[10px] font-semibold text-slate-600">
+                                  <span>{avail}/{total} available</span>
+                                  <span>{percent}%</span>
                                 </div>
-                                <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
                                   <div
-                                    className={`h-full rounded-full ${available > 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
-                                    style={{ width: `${Math.max(5, pct)}%` }}
-                                  ></div>
+                                    className={`h-full rounded-full transition-all duration-300 ${
+                                      avail === 0 ? 'bg-rose-500' : avail < 2 ? 'bg-amber-500' : 'bg-emerald-500'
+                                    }`}
+                                    style={{ width: `${percent}%` }}
+                                  />
                                 </div>
                               </div>
                             </td>
-                            <td className="px-5 py-3.5 text-right">
-                              <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                                {available > 0 ? (
+                            <td className="py-3.5 px-4 text-right space-x-1.5">
+                              {avail > 0 ? (
+                                <button
+                                  onClick={() => setActiveTab('issues')}
+                                  className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-[11px] font-semibold transition cursor-pointer"
+                                >
+                                  Issue
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => setActiveTab('holds')}
+                                  className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-[11px] font-semibold transition cursor-pointer"
+                                >
+                                  Place Hold
+                                </button>
+                              )}
+
+                              {isStaffOrAdmin && (
+                                <>
                                   <button
-                                    onClick={() => setView('issues')}
-                                    className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition shadow-xs"
+                                    onClick={() => openEditModal(book)}
+                                    className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-semibold transition cursor-pointer"
                                   >
-                                    Issue
+                                    Edit
                                   </button>
-                                ) : (
                                   <button
-                                    onClick={() => setView('holds')}
-                                    className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition shadow-xs"
+                                    onClick={() => handleDeleteBook(book.id)}
+                                    className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-semibold transition cursor-pointer"
                                   >
-                                    Place Hold
+                                    Delete
                                   </button>
-                                )}
-                                {isStaff && (
-                                  <>
-                                    <button
-                                      onClick={() => openEdit(book)}
-                                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition"
-                                    >
-                                      Edit
-                                    </button>
-                                    <button
-                                      onClick={() => handleDelete(book.id)}
-                                      className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold transition"
-                                    >
-                                      Delete
-                                    </button>
-                                  </>
-                                )}
-                              </div>
+                                </>
+                              )}
                             </td>
                           </tr>
                         );
                       })
+                    ) : (
+                      <tr>
+                        <td colSpan="6" className="py-8 text-center text-slate-400">
+                          No catalogue volumes match your search criteria.
+                        </td>
+                      </tr>
                     )}
                   </tbody>
                 </table>
               </div>
 
-              {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="px-5 py-3.5 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-500">
-                    Page {page + 1} of {totalPages}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setPage(p => Math.max(0, p - 1))}
-                      disabled={page === 0}
-                      className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100 transition disabled:opacity-40"
-                    >
-                      Previous
-                    </button>
-                    <button
-                      onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-                      disabled={page >= totalPages - 1}
-                      className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100 transition disabled:opacity-40"
-                    >
-                      Next
-                    </button>
-                  </div>
+              {/* Pagination controls */}
+              <div className="p-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600 bg-slate-50/50">
+                <span>
+                  Showing page {currentPage} of {totalPages} ({filteredBooks.length} items total)
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold disabled:opacity-40 hover:bg-slate-50 transition cursor-pointer"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold disabled:opacity-40 hover:bg-slate-50 transition cursor-pointer"
+                  >
+                    Next
+                  </button>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         )}
 
-        {view === 'issues' && <BookIssuePage users={users} books={books} />}
-        {view === 'holds' && <BookHoldPage users={users} books={books} />}
-        {view === 'fines' && <FinePaymentPage users={users} issueRecords={issueRecords} />}
+        {activeTab === 'issues' && (
+          <BookIssuePage
+            books={books}
+            onDataChange={() => {
+              fetchCatalogue();
+              fetchAuxiliaryData();
+            }}
+          />
+        )}
+
+        {activeTab === 'holds' && (
+          <BookHoldPage
+            books={books}
+            onDataChange={() => {
+              fetchCatalogue();
+              fetchAuxiliaryData();
+            }}
+          />
+        )}
+
+        {activeTab === 'fines' && (
+          <FinePaymentPage
+            onDataChange={() => {
+              fetchCatalogue();
+              fetchAuxiliaryData();
+            }}
+          />
+        )}
       </main>
 
-      {/* Catalogue New Book Modal */}
+      {/* Modal: Catalogue New Library Book */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 p-4" role="dialog">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md border border-slate-100">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-              <h3 className="text-lg font-bold text-slate-800">Catalogue New Library Book</h3>
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-fadeIn">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-base font-bold text-slate-900 tracking-tight">
+                Catalogue New Library Book
+              </h3>
               <button
+                type="button"
                 onClick={() => { setShowCreate(false); resetForm(); }}
-                className="text-slate-400 hover:text-slate-600 text-lg font-bold w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 transition"
+                className="text-slate-400 hover:text-slate-700 text-lg font-bold cursor-pointer"
               >
                 ×
               </button>
             </div>
 
-            <form onSubmit={handleCreate} className="space-y-3.5">
+            <form onSubmit={handleCreateSubmit} className="mt-4 space-y-3.5">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
-                  ISBN Number <span className="text-rose-500">*</span>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  ISBN Identifier *
                 </label>
                 <input
-                  placeholder="978-0134685991"
-                  value={formIsbn}
-                  onChange={e => setFormIsbn(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  type="text"
+                  placeholder="978-0131103627"
+                  value={formData.isbn}
+                  onChange={(e) => setFormData({ ...formData, isbn: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
-                {formErrors.isbn && <span className="text-[11px] text-rose-600 font-semibold">{formErrors.isbn}</span>}
+                {formErrors.isbn && (
+                  <p className="text-[11px] text-rose-600 mt-1 font-medium">{formErrors.isbn}</p>
+                )}
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
-                  Volume Title <span className="text-rose-500">*</span>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Volume Title *
                 </label>
                 <input
-                  placeholder="comprehensive book title"
-                  value={formTitle}
-                  onChange={e => setFormTitle(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  type="text"
+                  placeholder="Enter comprehensive book title..."
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
-                {formErrors.title && <span className="text-[11px] text-rose-600 font-semibold">{formErrors.title}</span>}
+                {formErrors.title && (
+                  <p className="text-[11px] text-rose-600 mt-1 font-medium">{formErrors.title}</p>
+                )}
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
-                  Author Full Name
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Author / Creator
                 </label>
                 <input
-                  placeholder="Author Full Name"
-                  value={formAuthor}
-                  onChange={e => setFormAuthor(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  type="text"
+                  placeholder="Author Full Name..."
+                  value={formData.author}
+                  onChange={(e) => setFormData({ ...formData, author: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Category Stream
                   </label>
-                  <input
-                    placeholder="Category"
-                    value={formCategory}
-                    onChange={e => setFormCategory(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <select
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                  >
+                    <option value="Computer Science">Computer Science</option>
+                    <option value="Mathematics">Mathematics</option>
+                    <option value="Science">Science</option>
+                    <option value="History">History</option>
+                    <option value="Software Engineering">Software Engineering</option>
+                  </select>
                 </div>
+
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Total Copies
                   </label>
                   <input
                     type="number"
                     min="1"
-                    value={formTotalCopies}
-                    onChange={e => setFormTotalCopies(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={formData.totalCopies}
+                    onChange={(e) => setFormData({ ...formData, totalCopies: e.target.value, availableCopies: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
               </div>
 
-              <div className="flex gap-2.5 pt-2">
+              <div className="flex gap-2.5 pt-3 border-t border-slate-100">
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition"
+                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-sm"
                 >
                   Register Volume Entry
                 </button>
                 <button
                   type="button"
                   onClick={() => { setShowCreate(false); resetForm(); }}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition"
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -556,96 +701,103 @@ function App() {
         </div>
       )}
 
-      {/* Modify Volume Modal */}
-      {showEdit && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 p-4" role="dialog">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md border border-slate-100">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-              <h3 className="text-lg font-bold text-slate-800">Modify Volume Configuration</h3>
+      {/* Modal: Modify Volume Configuration */}
+      {showEdit && editingBook && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-fadeIn">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-base font-bold text-slate-900 tracking-tight">
+                Modify Volume Configuration
+              </h3>
               <button
-                onClick={() => { setShowEdit(false); resetForm(); }}
-                className="text-slate-400 hover:text-slate-600 text-lg font-bold w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 transition"
+                type="button"
+                onClick={() => { setShowEdit(false); setEditingBook(null); resetForm(); }}
+                className="text-slate-400 hover:text-slate-700 text-lg font-bold cursor-pointer"
               >
                 ×
               </button>
             </div>
 
-            <form onSubmit={handleUpdate} className="space-y-3.5">
+            <form onSubmit={handleEditSubmit} className="mt-4 space-y-3.5">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
-                  ISBN Number <span className="text-rose-500">*</span>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  ISBN Identifier *
                 </label>
                 <input
-                  placeholder="978-0134685991"
-                  value={formIsbn}
-                  onChange={e => setFormIsbn(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  type="text"
+                  value={formData.isbn}
+                  onChange={(e) => setFormData({ ...formData, isbn: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
-                {formErrors.isbn && <span className="text-[11px] text-rose-600 font-semibold">{formErrors.isbn}</span>}
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
-                  Volume Title <span className="text-rose-500">*</span>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Volume Title *
                 </label>
                 <input
-                  placeholder="comprehensive book title"
-                  value={formTitle}
-                  onChange={e => setFormTitle(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
-                {formErrors.title && <span className="text-[11px] text-rose-600 font-semibold">{formErrors.title}</span>}
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
-                  Author Full Name
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Author / Creator
                 </label>
                 <input
-                  placeholder="Author Full Name"
-                  value={formAuthor}
-                  onChange={e => setFormAuthor(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  type="text"
+                  value={formData.author}
+                  onChange={(e) => setFormData({ ...formData, author: e.target.value })}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Category Stream
                   </label>
-                  <input
-                    placeholder="Category"
-                    value={formCategory}
-                    onChange={e => setFormCategory(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <select
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                  >
+                    <option value="Computer Science">Computer Science</option>
+                    <option value="Mathematics">Mathematics</option>
+                    <option value="Science">Science</option>
+                    <option value="History">History</option>
+                    <option value="Software Engineering">Software Engineering</option>
+                  </select>
                 </div>
+
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
-                    Total Copies
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Available Copies
                   </label>
                   <input
                     type="number"
-                    min="1"
-                    value={formTotalCopies}
-                    onChange={e => setFormTotalCopies(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    min="0"
+                    value={formData.availableCopies}
+                    onChange={(e) => setFormData({ ...formData, availableCopies: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
               </div>
 
-              <div className="flex gap-2.5 pt-2">
+              <div className="flex gap-2.5 pt-3 border-t border-slate-100">
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition"
+                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-sm"
                 >
                   Update Volume Entry
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setShowEdit(false); resetForm(); }}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition"
+                  onClick={() => { setShowEdit(false); setEditingBook(null); resetForm(); }}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -654,6 +806,11 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
+        <p>BookNest Library Management System &bull; Sri Krishna College of Engineering and Technology</p>
+      </footer>
     </div>
   );
 }
