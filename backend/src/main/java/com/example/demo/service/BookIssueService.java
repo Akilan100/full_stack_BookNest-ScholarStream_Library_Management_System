@@ -7,12 +7,14 @@ import com.example.demo.entity.*;
 import com.example.demo.exception.BusinessValidationException;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.BookIssueRecordRepository;
+import com.example.demo.repository.FinePaymentRepository;
 import com.example.demo.repository.LibraryBookRepository;
 import com.example.demo.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -21,33 +23,69 @@ import java.util.List;
 public class BookIssueService {
 
     private static final BigDecimal FINE_PER_DAY = new BigDecimal("1.00");
+    private static final BigDecimal LOST_BOOK_FINE = new BigDecimal("25.00");
     private static final int DEFAULT_LOAN_DAYS = 14;
 
     private final BookIssueRecordRepository issueRepository;
     private final LibraryBookRepository bookRepository;
     private final UserRepository userRepository;
+    private final FinePaymentRepository fineRepository;
 
     public BookIssueService(BookIssueRecordRepository issueRepository,
                             LibraryBookRepository bookRepository,
-                            UserRepository userRepository) {
+                            UserRepository userRepository,
+                            FinePaymentRepository fineRepository) {
         this.issueRepository = issueRepository;
         this.bookRepository = bookRepository;
         this.userRepository = userRepository;
+        this.fineRepository = fineRepository;
     }
 
-    @Transactional(readOnly = true)
+    private void syncOverdueState(BookIssueRecord record) {
+        if (record == null) return;
+        if (record.getStatus() == IssueStatus.ISSUED && record.getDueDate() != null && LocalDateTime.now().isAfter(record.getDueDate())) {
+            record.setStatus(IssueStatus.OVERDUE);
+            long overdueDays = ChronoUnit.DAYS.between(record.getDueDate().toLocalDate(), LocalDate.now());
+            if (overdueDays < 1) {
+                overdueDays = 1;
+            }
+            BigDecimal fine = FINE_PER_DAY.multiply(BigDecimal.valueOf(overdueDays));
+            record.setFineAmount(fine);
+            issueRepository.save(record);
+
+            FinePayment payment = fineRepository.findByBookIssueRecordId(record.getId()).orElse(new FinePayment());
+            payment.setBookIssueRecord(record);
+            payment.setLibraryAccount(record.getLibraryAccount());
+            payment.setAmount(fine);
+            if (payment.getPaymentDate() == null) {
+                payment.setPaymentDate(LocalDateTime.now());
+            }
+            if (payment.getPaymentStatus() == null) {
+                payment.setPaymentStatus(PaymentStatus.PENDING);
+            }
+            fineRepository.save(payment);
+        }
+    }
+
+    @Transactional
     public List<BookIssueResponseDto> getAll() {
-        return issueRepository.findAll().stream().map(BookIssueMapper::toDto).toList();
+        List<BookIssueRecord> records = issueRepository.findAll();
+        records.forEach(this::syncOverdueState);
+        return records.stream().map(BookIssueMapper::toDto).toList();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public BookIssueResponseDto getById(Long id) {
-        return BookIssueMapper.toDto(findById(id));
+        BookIssueRecord record = findById(id);
+        syncOverdueState(record);
+        return BookIssueMapper.toDto(record);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<BookIssueResponseDto> getByAccountId(Long accountId) {
-        return issueRepository.findByLibraryAccountId(accountId).stream().map(BookIssueMapper::toDto).toList();
+        List<BookIssueRecord> records = issueRepository.findByLibraryAccountId(accountId);
+        records.forEach(this::syncOverdueState);
+        return records.stream().map(BookIssueMapper::toDto).toList();
     }
 
     @Transactional
@@ -70,7 +108,12 @@ public class BookIssueService {
         record.setDueDate(dto.getDueDate() != null ? dto.getDueDate() : LocalDateTime.now().plusDays(DEFAULT_LOAN_DAYS));
         record.setStatus(IssueStatus.ISSUED);
         record.setFineAmount(BigDecimal.ZERO);
-        return BookIssueMapper.toDto(issueRepository.save(record));
+        BookIssueRecord saved = issueRepository.save(record);
+
+        // If explicitly issued with past due date, immediately sync overdue state
+        syncOverdueState(saved);
+
+        return BookIssueMapper.toDto(saved);
     }
 
     @Transactional
@@ -79,19 +122,37 @@ public class BookIssueService {
         if (record.getStatus() == IssueStatus.RETURNED) {
             throw new BusinessValidationException("Book already returned for issue id: " + id);
         }
-        record.setReturnDate(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        record.setReturnDate(now);
         record.setStatus(IssueStatus.RETURNED);
 
-        if (record.getReturnDate().isAfter(record.getDueDate())) {
-            long overdueDays = ChronoUnit.DAYS.between(record.getDueDate(), record.getReturnDate());
-            record.setFineAmount(FINE_PER_DAY.multiply(BigDecimal.valueOf(overdueDays)));
+        if (record.getDueDate() != null && record.getReturnDate().isAfter(record.getDueDate())) {
+            long overdueDays = ChronoUnit.DAYS.between(record.getDueDate().toLocalDate(), record.getReturnDate().toLocalDate());
+            if (overdueDays < 1) {
+                overdueDays = 1;
+            }
+            BigDecimal fine = FINE_PER_DAY.multiply(BigDecimal.valueOf(overdueDays));
+            record.setFineAmount(fine);
+
+            FinePayment payment = fineRepository.findByBookIssueRecordId(record.getId()).orElse(new FinePayment());
+            payment.setBookIssueRecord(record);
+            payment.setLibraryAccount(record.getLibraryAccount());
+            payment.setAmount(fine);
+            if (payment.getPaymentDate() == null) {
+                payment.setPaymentDate(now);
+            }
+            if (payment.getPaymentStatus() == null) {
+                payment.setPaymentStatus(PaymentStatus.PENDING);
+            }
+            fineRepository.save(payment);
         }
 
         LibraryBook book = record.getLibraryBook();
         book.setAvailableCopies(book.getAvailableCopies() + 1);
         bookRepository.save(book);
 
-        return BookIssueMapper.toDto(issueRepository.save(record));
+        issueRepository.save(record);
+        return BookIssueMapper.toDto(record);
     }
 
     @Transactional
@@ -101,7 +162,31 @@ public class BookIssueService {
             throw new BusinessValidationException("Cannot mark returned book as lost.");
         }
         record.setStatus(IssueStatus.LOST);
-        return BookIssueMapper.toDto(issueRepository.save(record));
+
+        // Assess replacement fine of $25.00 (+ any overdue accrued fine)
+        BigDecimal fine = LOST_BOOK_FINE;
+        if (record.getDueDate() != null && LocalDateTime.now().isAfter(record.getDueDate())) {
+            long overdueDays = ChronoUnit.DAYS.between(record.getDueDate().toLocalDate(), LocalDate.now());
+            if (overdueDays > 0) {
+                fine = fine.add(FINE_PER_DAY.multiply(BigDecimal.valueOf(overdueDays)));
+            }
+        }
+        record.setFineAmount(fine);
+
+        FinePayment payment = fineRepository.findByBookIssueRecordId(record.getId()).orElse(new FinePayment());
+        payment.setBookIssueRecord(record);
+        payment.setLibraryAccount(record.getLibraryAccount());
+        payment.setAmount(fine);
+        if (payment.getPaymentDate() == null) {
+            payment.setPaymentDate(LocalDateTime.now());
+        }
+        if (payment.getPaymentStatus() == null) {
+            payment.setPaymentStatus(PaymentStatus.PENDING);
+        }
+        fineRepository.save(payment);
+
+        issueRepository.save(record);
+        return BookIssueMapper.toDto(record);
     }
 
     @Transactional

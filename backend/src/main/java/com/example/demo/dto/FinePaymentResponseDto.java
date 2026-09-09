@@ -28,11 +28,20 @@ public class FinePaymentResponseDto {
     public Long getLibraryAccountId() { return libraryAccountId; }
     public void setLibraryAccountId(Long libraryAccountId) { this.libraryAccountId = libraryAccountId; }
 
+    public Long getUserId() { return libraryAccountId; }
+    public void setUserId(Long userId) { this.libraryAccountId = userId; }
+
     public String getAccountEmail() { return accountEmail; }
     public void setAccountEmail(String accountEmail) { this.accountEmail = accountEmail; }
 
+    public String getUserEmail() { return accountEmail; }
+    public void setUserEmail(String userEmail) { this.accountEmail = userEmail; }
+
     public String getAccountFullName() { return accountFullName; }
     public void setAccountFullName(String accountFullName) { this.accountFullName = accountFullName; }
+
+    public String getUserFullName() { return accountFullName; }
+    public void setUserFullName(String userFullName) { this.accountFullName = userFullName; }
 
     public BigDecimal getAmount() { return amount; }
     public void setAmount(BigDecimal amount) { this.amount = amount; }
@@ -42,6 +51,9 @@ public class FinePaymentResponseDto {
 
     public LocalDateTime getPaymentDate() { return paymentDate; }
     public void setPaymentDate(LocalDateTime paymentDate) { this.paymentDate = paymentDate; }
+
+    public LocalDateTime getAssessmentDate() { return paymentDate; }
+    public void setAssessmentDate(LocalDateTime assessmentDate) { this.paymentDate = assessmentDate; }
 
     public PaymentStatus getPaymentStatus() { return paymentStatus; }
     public void setPaymentStatus(PaymentStatus paymentStatus) { this.paymentStatus = paymentStatus; }

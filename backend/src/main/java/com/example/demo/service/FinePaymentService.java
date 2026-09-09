@@ -15,6 +15,7 @@ import com.example.demo.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -54,6 +55,9 @@ public class FinePaymentService {
             throw new BusinessValidationException("Fine already exists for issue record id: " + dto.getBookIssueRecordId());
         }
 
+        record.setFineAmount(dto.getAmount());
+        issueRepository.save(record);
+
         FinePayment payment = new FinePayment();
         payment.setBookIssueRecord(record);
         payment.setLibraryAccount(user);
@@ -81,6 +85,10 @@ public class FinePaymentService {
             throw new BusinessValidationException("Cannot waive an already paid fine.");
         }
         payment.setPaymentStatus(PaymentStatus.WAIVED);
+        if (payment.getBookIssueRecord() != null) {
+            payment.getBookIssueRecord().setFineAmount(BigDecimal.ZERO);
+            issueRepository.save(payment.getBookIssueRecord());
+        }
         return FinePaymentMapper.toDto(fineRepository.save(payment));
     }
 

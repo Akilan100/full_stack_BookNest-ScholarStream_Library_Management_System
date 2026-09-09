@@ -276,7 +276,7 @@ function BookIssuePage({ books = [], onDataChange }) {
                         {fine}
                       </td>
                       <td className="py-3.5 px-4 text-right space-x-1.5">
-                        {r.status === 'ISSUED' && (
+                        {(r.status === 'ISSUED' || r.status === 'OVERDUE') && (
                           <button
                             onClick={() => handleReturn(r.id)}
                             className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-semibold transition cursor-pointer"
@@ -285,7 +285,7 @@ function BookIssuePage({ books = [], onDataChange }) {
                           </button>
                         )}
 
-                        {isStaffOrAdmin && r.status === 'ISSUED' && (
+                        {isStaffOrAdmin && (r.status === 'ISSUED' || r.status === 'OVERDUE') && (
                           <button
                             onClick={() => handleMarkLost(r.id)}
                             className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-[11px] font-semibold transition cursor-pointer"
